@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { MotionConfig } from "framer-motion";
 import { useAuth } from "@/components/providers/auth-provider";
 
 export function AccessibilityProvider({ children }: { children: React.ReactNode }) {
@@ -18,5 +19,9 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     root.setAttribute("data-learning-style", profile?.learningStyle ?? "none");
   }, [profile]);
 
-  return <>{children}</>;
+  return (
+    <MotionConfig reducedMotion={profile?.accessibility.reduceMotion ? "always" : "user"}>
+      {children}
+    </MotionConfig>
+  );
 }

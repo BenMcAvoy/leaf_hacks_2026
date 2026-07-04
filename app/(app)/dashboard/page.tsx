@@ -15,14 +15,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/providers/auth-provider";
+import { MotionItem, MotionPage, MotionPress, MotionStagger } from "@/components/motion-primitives";
 import { XP_PER_LEVEL } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const QUICK_ACTIONS = [
-  { key: "flashcards", label: "Generate AI Flashcards", icon: RiSdCardLine },
-  { key: "homework", label: "Homework Helper", icon: RiQuestionAnswerLine },
-  { key: "plan", label: "Create Study Plan", icon: RiCalendarScheduleLine },
-  { key: "understand", label: "Understand a Topic", icon: RiLightbulbFlashLine },
+  { key: "flashcards", label: "Make Flashcards", icon: RiSdCardLine },
+  { key: "homework", label: "Hint First Help", icon: RiQuestionAnswerLine },
+  { key: "plan", label: "10 Minute Plan", icon: RiCalendarScheduleLine },
+  { key: "understand", label: "Reshape a Topic", icon: RiLightbulbFlashLine },
 ];
 
 function weekDays(): { label: string; isToday: boolean }[] {
@@ -52,7 +53,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+    <MotionPage className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+      <MotionItem>
       <Card className="flex flex-col gap-4 border-none bg-gradient-to-br from-primary/90 to-primary p-5 text-primary-foreground">
         <div className="flex items-center justify-between">
           <div>
@@ -74,7 +76,7 @@ export default function DashboardPage() {
         <div className="flex justify-between pt-1">
           {weekDays().map((day, i) => (
             <div
-              key={i}
+              key={`${day.label}-${i}`}
               className={cn(
                 "flex size-8 items-center justify-center rounded-full text-xs font-medium",
                 day.isToday ? "bg-white text-primary" : "bg-white/15",
@@ -85,13 +87,14 @@ export default function DashboardPage() {
           ))}
         </div>
       </Card>
+      </MotionItem>
 
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3">
+      <MotionItem>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Learn Your Way</h2>
+        <MotionStagger className="grid grid-cols-2 gap-3">
           {QUICK_ACTIONS.map(({ key, label, icon: Icon }) => (
+            <MotionPress key={key}>
             <Card
-              key={key}
               onClick={() => goToUpload()}
               className="flex cursor-pointer flex-col items-start gap-3 p-4 transition-colors hover:border-primary"
             >
@@ -100,10 +103,12 @@ export default function DashboardPage() {
               </div>
               <span className="text-sm font-medium">{label}</span>
             </Card>
+            </MotionPress>
           ))}
-        </div>
-      </div>
+        </MotionStagger>
+      </MotionItem>
 
+      <MotionItem>
       <form onSubmit={handlePromptSubmit} className="flex items-center gap-2">
         <Input
           value={prompt}
@@ -115,6 +120,7 @@ export default function DashboardPage() {
           <RiSendPlaneLine className="size-4" />
         </Button>
       </form>
-    </div>
+      </MotionItem>
+    </MotionPage>
   );
 }

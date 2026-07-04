@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { RiAddLine, RiCloseLine, RiMedalLine } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
+import { MotionItem, MotionPage, MotionPress, MotionStagger } from "@/components/motion-primitives";
 import { LEARNING_STYLE_META, type LearningStyle, type UserProfile } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -90,8 +92,8 @@ function ProfileForm({
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
-      <div>
+    <MotionPage className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+      <MotionItem>
         <h1 className="text-xl font-semibold">{form.displayName}</h1>
         <p className="text-sm text-muted-foreground">{form.email}</p>
         <div className="mt-3">
@@ -101,18 +103,21 @@ function ProfileForm({
           </div>
           <Progress value={completion(form)} className="h-2" />
         </div>
-      </div>
+      </MotionItem>
 
       {form.badges.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <MotionStagger className="flex flex-wrap gap-2">
           {form.badges.map((badge) => (
+            <MotionItem key={badge}>
             <Badge key={badge} variant="secondary" className="gap-1">
               <RiMedalLine className="size-3" /> {badge}
             </Badge>
+            </MotionItem>
           ))}
-        </div>
+        </MotionStagger>
       )}
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <h2 className="text-sm font-medium">Basic Information</h2>
         <Input
@@ -132,7 +137,9 @@ function ProfileForm({
           placeholder="Location"
         />
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Experience</h2>
@@ -172,7 +179,9 @@ function ProfileForm({
           </div>
         ))}
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Qualifications</h2>
@@ -212,7 +221,9 @@ function ProfileForm({
           </div>
         ))}
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Languages</h2>
@@ -243,11 +254,14 @@ function ProfileForm({
           </div>
         ))}
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <h2 className="text-sm font-medium">Skills</h2>
-        <div className="flex flex-wrap gap-2">
+        <MotionStagger className="flex flex-wrap gap-2">
           {form.skills.map((skill, i) => (
+            <MotionItem key={`${skill}-${i}`}>
             <Badge key={i} variant="secondary" className="gap-1">
               {skill}
               <button
@@ -257,8 +271,9 @@ function ProfileForm({
                 <RiCloseLine className="size-3" />
               </button>
             </Badge>
+            </MotionItem>
           ))}
-        </div>
+        </MotionStagger>
         <div className="flex gap-2">
           <Input
             value={skillInput}
@@ -276,18 +291,22 @@ function ProfileForm({
           </Button>
         </div>
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-4 p-4">
         <h2 className="text-sm font-medium">Learning style</h2>
         <div className="grid grid-cols-2 gap-2">
           {(Object.keys(LEARNING_STYLE_META) as LearningStyle[]).map((key) => (
-            <button
+            <motion.button
               key={key}
               onClick={() => setForm({ ...form, learningStyle: key })}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.985 }}
               className={`rounded-lg border p-3 text-left text-sm ${form.learningStyle === key ? "border-primary bg-primary/5" : ""}`}
             >
               {LEARNING_STYLE_META[key].label}
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -320,10 +339,13 @@ function ProfileForm({
           />
         </div>
       </Card>
+      </MotionItem>
 
+      <MotionPress>
       <Button onClick={save} disabled={saving} size="lg">
         {saving ? "Saving..." : "Save changes"}
       </Button>
-    </div>
+      </MotionPress>
+    </MotionPage>
   );
 }
