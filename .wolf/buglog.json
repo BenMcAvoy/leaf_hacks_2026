@@ -5,5 +5,12 @@
     "root_cause": "Called another component's context setter (brainiac.show(...)) from inside a useState functional updater (setOpen((v) => { ...; brainiac.show(...); return next; })). React treats the updater function body as part of render, so any setState call inside it (even for a different component's state) is flagged as a render-phase side effect.",
     "fix": "Read the current state value directly in the event handler to decide whether to call brainiac.show(), then call setOpen separately, instead of doing it inside the updater callback. See components/chat-bubble.tsx toggleOpen().",
     "tags": ["react", "setState-in-render", "context", "chat-bubble", "brainiac"]
+  },
+  {
+    "date": "2026-07-04",
+    "error_message": "eslint: Calling setState synchronously within an effect can trigger cascading renders (react-hooks/set-state-in-effect)",
+    "root_cause": "Standard next-themes SSR-safe mount guard (`const [mounted, setMounted] = useState(false); useEffect(() => setMounted(true), [])`) trips this project's eslint rule because it's a setState call directly in an effect body.",
+    "fix": "Replace the useState+useEffect mount guard with `useSyncExternalStore(subscribeNoop, () => true, () => false)` to get an SSR-safe 'is client mounted' boolean without an effect-based setState. See components/theme-toggle.tsx.",
+    "tags": ["react", "eslint", "react-hooks", "next-themes", "ssr", "theme-toggle"]
   }
 ]

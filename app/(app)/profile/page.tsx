@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { AccessibilityControls } from "@/components/accessibility-controls";
+import { AppearanceControls } from "@/components/appearance-controls";
 import { LearningStyleSelector } from "@/components/learning-style-selector";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
@@ -283,6 +284,9 @@ function ProfileForm({
           value={form.learningStyle}
           onChange={(learningStyle) => setForm({ ...form, learningStyle })}
         />
+
+        <h2 className="text-sm font-medium">Appearance</h2>
+        <AppearanceControls />
 
         <h2 className="text-sm font-medium">Accessibility</h2>
         <AccessibilityControls
