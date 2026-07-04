@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useActivePack } from "@/components/providers/active-pack-provider";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -13,18 +15,21 @@ interface ChatMessage {
   text: string;
 }
 
-export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
+export function ChatBubble() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: "Hi! Ask me about anything you're studying." },
   ]);
+  const { user } = useAuth();
+  const { activePackId } = useActivePack();
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || sending) return;
+    const history = messages;
     setMessages((m) => [...m, { role: "user", text: trimmed }]);
     setInput("");
     setSending(true);
@@ -32,7 +37,12 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, topic: activeTopic }),
+        body: JSON.stringify({
+          userId: user?.uid,
+          activePackId: activePackId ?? undefined,
+          message: trimmed,
+          history,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to get a reply");

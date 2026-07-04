@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { ActivePackProvider } from "@/components/providers/active-pack-provider";
 import { NavShell } from "@/components/nav-shell";
 import { ChatBubble } from "@/components/chat-bubble";
 
@@ -28,9 +29,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <NavShell>
-      {children}
-      <ChatBubble />
-    </NavShell>
+    <ActivePackProvider>
+      <NavShell>
+        {children}
+        <ChatBubble />
+      </NavShell>
+    </ActivePackProvider>
   );
 }

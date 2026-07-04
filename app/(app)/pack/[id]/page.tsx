@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { getDocument } from "@/lib/firestore";
+import { useActivePack } from "@/components/providers/active-pack-provider";
 import type { StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -16,10 +17,15 @@ export default function StudyPackPage() {
   const [pack, setPack] = useState<StudyPack | null>(null);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const { setActivePackId } = useActivePack();
 
   useEffect(() => {
     getDocument<StudyPack>("studyPacks", id).then(setPack);
   }, [id]);
+
+  useEffect(() => {
+    setActivePackId(id);
+  }, [id, setActivePackId]);
 
   if (!pack) {
     return <div className="p-6 text-sm text-muted-foreground">Loading study pack...</div>;

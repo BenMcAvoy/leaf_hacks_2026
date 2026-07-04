@@ -6,6 +6,7 @@ import { RiCheckLine, RiCloseLine, RiTrophyLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useActivePack } from "@/components/providers/active-pack-provider";
 import { getDocument } from "@/lib/firestore";
 import { quizFeedback } from "@/lib/quiz-feedback";
 import { xpForQuizResult, updateStreak, applyXp } from "@/lib/gamification";
@@ -23,10 +24,15 @@ export default function QuizPage() {
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const [xpGained, setXpGained] = useState(0);
+  const { setActivePackId } = useActivePack();
 
   useEffect(() => {
     getDocument<StudyPack>("studyPacks", id).then(setPack);
   }, [id]);
+
+  useEffect(() => {
+    setActivePackId(id);
+  }, [id, setActivePackId]);
 
   if (!pack) {
     return <div className="p-6 text-sm text-muted-foreground">Loading quiz...</div>;

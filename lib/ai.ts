@@ -62,20 +62,56 @@ export async function generateStudyPack(input: {
   };
 }
 
-export async function chatReply(input: { message: string; topic?: string }): Promise<string> {
+function summarizePack(pack: StudyPack): string {
+  return [
+    `Topic: ${pack.topic}`,
+    `Overview: ${pack.overview}`,
+    pack.keyPoints.length ? `Key points: ${pack.keyPoints.slice(0, 3).join("; ")}` : "",
+    pack.flashcards.length
+      ? `Sample flashcards: ${pack.flashcards
+          .slice(0, 2)
+          .map((f) => `${f.front} -> ${f.back}`)
+          .join(" | ")}`
+      : "",
+    pack.quiz.length ? `Quiz covers: ${pack.quiz.slice(0, 3).map((q) => q.question).join("; ")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export async function chatReply(input: {
+  message: string;
+  learningStyle: LearningStyle | null;
+  packs: StudyPack[];
+  history: { role: "user" | "assistant"; text: string }[];
+}): Promise<string> {
+  const systemText = [
+    "You are a concise, encouraging study assistant embedded in a learning app.",
+    "Answer in 2-3 short sentences unless more detail is clearly requested.",
+    styleInstruction(input.learningStyle),
+    input.packs.length
+      ? `Here is the study material the user has been working on:\n\n${input.packs.map(summarizePack).join("\n\n")}`
+      : "The user has no study packs yet; answer generally and encourage them to create one.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const firstUserTurnIndex = input.history.findIndex((turn) => turn.role === "user");
+  const historyFromFirstUserTurn =
+    firstUserTurnIndex === -1 ? [] : input.history.slice(firstUserTurnIndex);
+
+  const messages = [
+    ...historyFromFirstUserTurn.map((turn) => ({
+      role: turn.role === "assistant" ? ("model" as const) : ("user" as const),
+      content: [{ text: turn.text }],
+    })),
+    { role: "user" as const, content: [{ text: input.message }] },
+  ];
+
   const { text } = await ai.generate({
     model: flashModel,
-    prompt: [
-      {
-        text: [
-          "You are a concise, encouraging study assistant embedded in a learning app.",
-          input.topic ? `The user is currently studying "${input.topic}".` : "",
-          `Answer this question in 2-3 short sentences: ${input.message}`,
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
-      },
-    ],
+    system: systemText,
+    messages,
   });
   return text;
 }
