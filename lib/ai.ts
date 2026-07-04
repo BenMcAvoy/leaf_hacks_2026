@@ -191,7 +191,12 @@ export async function chatReply(input: {
     "Valid navigateTo values: dashboard = home/dashboard screen; upload = the add/upload a new study pack screen; packs = the full list of the user's study packs (flashcards/decks); squads = the squads/social screen; profile = the user's profile screen; active_pack = the study pack currently open (only use if the user references 'this pack' / 'the current one' and one is open); pack = a specific study pack from the list above, identified by name or as 'my latest/newest deck/pack'.",
     "When navigateTo is 'pack', also set packId to the exact id shown in brackets next to that pack in the list above. Never invent an id that isn't in the list. If the user asks for 'my latest' or 'newest' pack, use the id of the first pack listed. If they name a pack that doesn't closely match anything in the list, leave navigateTo null and mention in the reply that you couldn't find it.",
     input.audio
-      ? "The user's message was spoken and is attached as audio. First transcribe exactly what they said into the transcript field, then treat that transcript as their message for your reply and navigation decision."
+      ? [
+          "The user's message was spoken and is attached as audio. Listen carefully and transcribe it into the transcript field as accurately as possible, word for word.",
+          "Use the study pack topics, key points, and flashcard terms listed above as context to correctly resolve any unclear, technical, or domain-specific words the user says; prefer a transcription consistent with their study material over a generic-sounding guess.",
+          "Ignore filler sounds like 'um' or 'uh', but keep everything else verbatim, do not paraphrase or summarize.",
+          "Then treat that transcript as their message for your reply and navigation decision.",
+        ].join(" ")
       : "",
   ]
     .filter(Boolean)

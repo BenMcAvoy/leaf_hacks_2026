@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   RiSparkling2Line,
@@ -33,12 +33,27 @@ export function ChatBubble() {
   ]);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const levelFrameRef = useRef<number | null>(null);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
   const { user, profile } = useAuth();
   const { activePackId } = useActivePack();
   const brainiac = useBrainiac();
   const router = useRouter();
+
+  useEffect(() => {
+    return () => {
+      if (levelFrameRef.current) cancelAnimationFrame(levelFrameRef.current);
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+      audioContextRef.current?.close();
+      mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   function toggleOpen() {
     if (!open) brainiac.show("greeting", "Need a hand studying?");
@@ -92,12 +107,36 @@ export function ChatBubble() {
     await sendPayload({ message: trimmed }, trimmed);
   }
 
+  function watchAudioLevel(stream: MediaStream) {
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 32;
+    audioContext.createMediaStreamSource(stream).connect(analyser);
+    audioContextRef.current = audioContext;
+    analyserRef.current = analyser;
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      const level = data.reduce((sum, v) => sum + v, 0) / data.length / 255;
+      barRefs.current.forEach((bar, i) => {
+        if (!bar) return;
+        const scale = Math.min(1, 0.15 + level * (1 + i * 0.2));
+        bar.style.transform = `scaleY(${scale})`;
+      });
+      levelFrameRef.current = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
   async function startRecording() {
     if (sending) return;
     chunksRef.current = [];
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm", audioBitsPerSecond: 128000 });
       mediaRecorderRef.current = mr;
       mr.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -114,6 +153,9 @@ export function ChatBubble() {
       };
       mr.start();
       setRecording(true);
+      setElapsedSeconds(0);
+      elapsedTimerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+      watchAudioLevel(stream);
     } catch (err) {
       const denied = err instanceof Error && err.name === "NotAllowedError";
       toast.error(denied ? "Microphone access denied. Type your message instead." : "Could not start recording.");
@@ -123,6 +165,17 @@ export function ChatBubble() {
   function stopRecording() {
     mediaRecorderRef.current?.stop();
     setRecording(false);
+    if (levelFrameRef.current) cancelAnimationFrame(levelFrameRef.current);
+    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    audioContextRef.current?.close();
+    audioContextRef.current = null;
+    analyserRef.current = null;
+  }
+
+  function formatElapsed(totalSeconds: number) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   }
 
   return (
@@ -159,36 +212,68 @@ export function ChatBubble() {
               </div>
             )}
           </div>
-          <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
-            {profile?.voiceModeEnabled && (
+          {recording ? (
+            <div className="flex items-center gap-3 border-t p-3">
               <Button
                 type="button"
                 size="icon"
-                variant={recording ? "destructive" : "outline"}
-                aria-label={recording ? "Stop recording" : "Record voice message"}
-                disabled={sending || transcribing}
-                onClick={recording ? stopRecording : startRecording}
+                variant="destructive"
+                aria-label="Stop recording"
+                onClick={stopRecording}
               >
-                {transcribing ? (
-                  <RiLoader4Line className="size-4 animate-spin" />
-                ) : recording ? (
-                  <RiMicOffLine className="size-4" />
-                ) : (
-                  <RiMicLine className="size-4" />
-                )}
+                <RiMicOffLine className="size-4" />
               </Button>
-            )}
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything..."
-              aria-label="Message the study assistant"
-              disabled={sending || recording || transcribing}
-            />
-            <Button type="submit" size="icon" aria-label="Send" disabled={sending || recording || transcribing}>
-              <RiSendPlaneLine className="size-4" />
-            </Button>
-          </form>
+              <div className="flex flex-1 items-center gap-2">
+                <span className="relative flex size-2 shrink-0">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-destructive" />
+                </span>
+                <span className="text-xs text-muted-foreground">Listening...</span>
+                <div className="flex h-5 flex-1 items-end justify-center gap-0.5">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      ref={(el) => {
+                        barRefs.current[i] = el;
+                      }}
+                      className="h-full w-1 origin-bottom rounded-full bg-destructive/70 transition-transform duration-75"
+                      style={{ transform: "scaleY(0.15)" }}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs tabular-nums text-muted-foreground">{formatElapsed(elapsedSeconds)}</span>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
+              {profile?.voiceModeEnabled && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="Record voice message"
+                  disabled={sending || transcribing}
+                  onClick={startRecording}
+                >
+                  {transcribing ? (
+                    <RiLoader4Line className="size-4 animate-spin" />
+                  ) : (
+                    <RiMicLine className="size-4" />
+                  )}
+                </Button>
+              )}
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask anything..."
+                aria-label="Message the study assistant"
+                disabled={sending || transcribing}
+              />
+              <Button type="submit" size="icon" aria-label="Send" disabled={sending || transcribing}>
+                <RiSendPlaneLine className="size-4" />
+              </Button>
+            </form>
+          )}
         </Card>
       )}
       <Button
