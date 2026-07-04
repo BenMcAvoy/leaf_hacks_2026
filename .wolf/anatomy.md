@@ -28,3 +28,16 @@ lib/           Shared utilities and service wrappers
 - Firebase initialized as a lazy singleton in `lib/firebase.ts`
 - Firestore accessed exclusively through `lib/firestore.ts` wrapper
 - All Firestore documents are typed with generics; returned with `id` field injected
+- No animation library (no framer-motion) - motion is hand-written CSS `@keyframes` in `app/globals.css` plus Tailwind `animate-*` utilities
+- Reduced motion is a global CSS override: `AccessibilityProvider` toggles `html.reduce-motion`, and `globals.css` forces near-zero animation/transition durations for it - new animated components get reduced-motion support for free via plain CSS animation/transition, no `prefers-reduced-motion` hook needed
+- `app/(app)/layout.tsx` is the authenticated app shell (ActivePackProvider > BrainiacProvider > NavShell > children + ChatBubble + BrainiacMascot); root `app/layout.tsx` covers marketing/auth/onboarding and wraps ThemeProvider > AuthProvider > AccessibilityProvider
+
+## AI assistant / mascot components
+- `components/chat-bubble.tsx` — floating AI study assistant widget, bottom-right, z-50
+- `components/brainiac-mascot.tsx` + `components/providers/brainiac-provider.tsx` — "Brainiac" mascot: contextual pop-in character reacting to AI assistant state, bottom-left, z-40 (`useBrainiac()` hook: `show(mood, message?, durationMs?)`, `hide()`)
+
+## Shared UI components (dedup pass 2026-07-04)
+- `components/study-pack-list.tsx` — pack row list + empty state; used by dashboard "Recent packs" and `/packs`
+- `components/accessibility-controls.tsx` — reduce motion / dyslexia font / low-stimulation / text size / line spacing; used by onboarding and profile
+- `components/learning-style-selector.tsx` — 4-card learning style picker; used by onboarding and profile
+- Prefer extending these shared components over re-implementing their views inline elsewhere

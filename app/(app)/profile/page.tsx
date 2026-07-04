@@ -4,15 +4,15 @@ import { useState } from "react";
 import { RiAddLine, RiCloseLine, RiMedalLine } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { AccessibilityControls } from "@/components/accessibility-controls";
+import { LearningStyleSelector } from "@/components/learning-style-selector";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
-import { LEARNING_STYLE_META, type LearningStyle, type UserProfile } from "@/lib/types";
+import type { UserProfile } from "@/lib/types";
 import { toast } from "sonner";
 
 type Experience = UserProfile["experience"][number];
@@ -279,46 +279,16 @@ function ProfileForm({
 
       <Card className="flex flex-col gap-4 p-4">
         <h2 className="text-sm font-medium">Learning style</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {(Object.keys(LEARNING_STYLE_META) as LearningStyle[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => setForm({ ...form, learningStyle: key })}
-              className={`rounded-lg border p-3 text-left text-sm ${form.learningStyle === key ? "border-primary bg-primary/5" : ""}`}
-            >
-              {LEARNING_STYLE_META[key].label}
-            </button>
-          ))}
-        </div>
+        <LearningStyleSelector
+          value={form.learningStyle}
+          onChange={(learningStyle) => setForm({ ...form, learningStyle })}
+        />
 
         <h2 className="text-sm font-medium">Accessibility</h2>
-        <div className="flex items-center justify-between">
-          <Label>Reduce motion</Label>
-          <Switch
-            checked={form.accessibility.reduceMotion}
-            onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, reduceMotion: v } })
-            }
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label>Dyslexia-friendly font</Label>
-          <Switch
-            checked={form.accessibility.dyslexiaFont}
-            onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, dyslexiaFont: v } })
-            }
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label>Low-stimulation colors</Label>
-          <Switch
-            checked={form.accessibility.lowStimulation}
-            onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, lowStimulation: v } })
-            }
-          />
-        </div>
+        <AccessibilityControls
+          value={form.accessibility}
+          onChange={(accessibility) => setForm({ ...form, accessibility })}
+        />
       </Card>
 
       <Button onClick={save} disabled={saving} size="lg">
