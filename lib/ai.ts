@@ -17,6 +17,39 @@ const studyPackSchema = z.object({
   plan: z.array(z.string()),
 });
 
+const RETRYABLE_STATUS = new Set([429, 500, 503, 504]);
+
+function isRetryableError(err: unknown): boolean {
+  const status = (err as { status?: number; statusCode?: number } | null)?.status
+    ?? (err as { statusCode?: number } | null)?.statusCode;
+  if (status !== undefined) return RETRYABLE_STATUS.has(status);
+  const message = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  return (
+    message.includes("overloaded") ||
+    message.includes("unavailable") ||
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("rate limit") ||
+    message.includes("429") ||
+    message.includes("503")
+  );
+}
+
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt === maxAttempts || !isRetryableError(err)) throw err;
+      const delayMs = 500 * 2 ** (attempt - 1);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 function styleInstruction(style: LearningStyle | null): string {
   if (!style) return "";
   const meta = LEARNING_STYLE_META[style];
@@ -108,11 +141,13 @@ export async function chatReply(input: {
     { role: "user" as const, content: [{ text: input.message }] },
   ];
 
-  const { text } = await ai.generate({
-    model: flashModel,
-    system: systemText,
-    messages,
-  });
+  const { text } = await withRetry(() =>
+    ai.generate({
+      model: flashModel,
+      system: systemText,
+      messages,
+    }),
+  );
   return text;
 }
 
