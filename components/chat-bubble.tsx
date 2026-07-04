@@ -1,7 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { RiSparkling2Line, RiCloseLine, RiSendPlaneLine } from "@remixicon/react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  RiSparkling2Line,
+  RiCloseLine,
+  RiSendPlaneLine,
+  RiMicLine,
+  RiMicOffLine,
+  RiLoader4Line,
+} from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,22 +31,26 @@ export function ChatBubble() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: "Hi! Ask me about anything you're studying." },
   ]);
-  const { user } = useAuth();
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const { user, profile } = useAuth();
   const { activePackId } = useActivePack();
   const brainiac = useBrainiac();
+  const router = useRouter();
 
   function toggleOpen() {
     if (!open) brainiac.show("greeting", "Need a hand studying?");
     setOpen((v) => !v);
   }
 
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || sending) return;
+  async function sendPayload(
+    body: { message?: string; audio?: { dataUrl: string; contentType: string } },
+    optimisticUserText?: string,
+  ) {
     const history = messages;
-    setMessages((m) => [...m, { role: "user", text: trimmed }]);
-    setInput("");
+    if (optimisticUserText) setMessages((m) => [...m, { role: "user", text: optimisticUserText }]);
     setSending(true);
     brainiac.show("thinking");
     try {
@@ -48,20 +60,69 @@ export function ChatBubble() {
         body: JSON.stringify({
           userId: user?.uid,
           activePackId: activePackId ?? undefined,
-          message: trimmed,
           history,
+          ...body,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to get a reply");
+      if (!optimisticUserText && data.transcript) {
+        setMessages((m) => [...m, { role: "user", text: data.transcript }]);
+      }
       setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
       brainiac.show("happy");
+      if (data.navigateTo) {
+        toast.success("Taking you there...");
+        router.push(data.navigateTo);
+      }
     } catch (err) {
       toast.error(getFriendlyErrorMessage(err, "The study assistant couldn't respond. Please try again."));
       brainiac.show("error");
     } finally {
       setSending(false);
+      setTranscribing(false);
     }
+  }
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || sending) return;
+    setInput("");
+    await sendPayload({ message: trimmed }, trimmed);
+  }
+
+  async function startRecording() {
+    if (sending) return;
+    chunksRef.current = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mr;
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          setTranscribing(true);
+          await sendPayload({ audio: { dataUrl: reader.result as string, contentType: "audio/webm" } });
+        };
+        reader.readAsDataURL(blob);
+      };
+      mr.start();
+      setRecording(true);
+    } catch (err) {
+      const denied = err instanceof Error && err.name === "NotAllowedError";
+      toast.error(denied ? "Microphone access denied. Type your message instead." : "Could not start recording.");
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
   }
 
   return (
@@ -99,14 +160,32 @@ export function ChatBubble() {
             )}
           </div>
           <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
+            {profile?.voiceModeEnabled && (
+              <Button
+                type="button"
+                size="icon"
+                variant={recording ? "destructive" : "outline"}
+                aria-label={recording ? "Stop recording" : "Record voice message"}
+                disabled={sending || transcribing}
+                onClick={recording ? stopRecording : startRecording}
+              >
+                {transcribing ? (
+                  <RiLoader4Line className="size-4 animate-spin" />
+                ) : recording ? (
+                  <RiMicOffLine className="size-4" />
+                ) : (
+                  <RiMicLine className="size-4" />
+                )}
+              </Button>
+            )}
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask anything..."
               aria-label="Message the study assistant"
-              disabled={sending}
+              disabled={sending || recording || transcribing}
             />
-            <Button type="submit" size="icon" aria-label="Send" disabled={sending}>
+            <Button type="submit" size="icon" aria-label="Send" disabled={sending || recording || transcribing}>
               <RiSendPlaneLine className="size-4" />
             </Button>
           </form>
