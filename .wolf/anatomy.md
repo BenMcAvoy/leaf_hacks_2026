@@ -33,6 +33,9 @@ lib/           Shared utilities and service wrappers
 - `app/api/quiz/grade-definition/route.ts` — POST, grades a typed or spoken definition-mode answer via Gemini
 - `app/api/quiz/speak/route.ts` — POST, synthesizes speech for a definition via Gemini TTS, returns WAV base64
 
+## Profile page
+- `UserProfile.displayName` used to only be set once at signup (defaults to the email prefix, see `newProfile()` in `components/providers/auth-provider.tsx`) with no way to change it; now editable via a "Username" `Input` at the top of the "Basic Information" card in `app/(app)/profile/page.tsx`, saved through the same `updateProfile(form)` call as the rest of the profile form (trimmed on save, falls back to the previous value if left blank)
+
 ## Upload page
 - `app/(app)/upload/page.tsx` photo tab has two ways to supply an image: a hidden `<input type="file" accept="image/*" capture="environment">` triggered by a "Take a photo" button (opens the device camera directly on mobile) and the existing plain `<input type="file" accept="image/*">` for picking from the gallery/library; both share the same `handleFileChange` -> `uploadUserFile`
 

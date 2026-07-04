@@ -61,7 +61,7 @@ function ProfileForm({
     if (!form) return;
     setSaving(true);
     try {
-      await updateProfile(form);
+      await updateProfile({ ...form, displayName: form.displayName.trim() || profile.displayName });
       toast.success("Profile saved");
     } catch (err) {
       const message = getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again.");
@@ -122,6 +122,16 @@ function ProfileForm({
 
       <Card className="flex flex-col gap-3 p-4">
         <h2 className="text-sm font-medium">Basic Information</h2>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            value={form.displayName}
+            onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+            placeholder="Your username"
+            maxLength={30}
+          />
+        </div>
         <Input
           value={form.basicInfo.headline}
           onChange={(e) => setForm({ ...form, basicInfo: { ...form.basicInfo, headline: e.target.value } })}
