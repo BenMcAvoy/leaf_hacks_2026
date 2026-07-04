@@ -29,6 +29,7 @@ function newProfile(uid: string, email: string): UserProfile {
     accessibility: defaultAccessibilitySettings,
     sensoryProfile: defaultSensoryAndCognitiveProfile,
     interestProfile: defaultInterestProfile,
+    voiceModeEnabled: false,
     xp: 0,
     level: 1,
     streakCount: 0,

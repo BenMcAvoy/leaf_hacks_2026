@@ -1,8 +1,15 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RiImageLine, RiFileTextLine, RiStickyNoteLine, RiLinkM, RiSparkling2Line } from "@remixicon/react";
+import {
+  RiImageLine,
+  RiFileTextLine,
+  RiStickyNoteLine,
+  RiLinkM,
+  RiSparkling2Line,
+  RiCameraLine,
+} from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -11,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { SpeechTextarea } from "@/components/ui/speech-textarea";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { addDocument, timestamp } from "@/lib/firestore";
 import { uploadUserFile } from "@/lib/storage";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
@@ -27,6 +35,8 @@ function UploadContent() {
   const [generating, setGenerating] = useState(false);
   const { user, profile } = useAuth();
   const router = useRouter();
+  const brainiac = useBrainiac();
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -35,9 +45,12 @@ function UploadContent() {
     try {
       setFile(await uploadUserFile(user.uid, selected));
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't upload that file. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't upload that file. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -73,7 +86,9 @@ function UploadContent() {
       });
       router.push(`/pack/${packId}`);
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't generate your study pack. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't generate your study pack. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setGenerating(false);
     }
@@ -107,8 +122,23 @@ function UploadContent() {
         <TabsContent value="photo">
           <Card className="flex flex-col items-center gap-3 border-dashed p-8 text-center">
             <RiImageLine className="size-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Upload a photo of your notes or textbook</p>
-            <Input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} />
+            <p className="text-sm font-medium">Take a picture or upload a photo of your notes or textbook</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={uploading}>
+                <RiCameraLine className="size-4" />
+                Take a photo
+              </Button>
+              <Input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} className="w-auto" />
+            </div>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="hidden"
+            />
             {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
             {file && !uploading && <p className="text-xs text-muted-foreground">Photo uploaded.</p>}
           </Card>

@@ -44,7 +44,7 @@ export function StudyPackList({
         const Icon = SOURCE_ICONS[pack.sourceType];
         return (
           <Link key={pack.id} href={`/pack/${pack.id}`}>
-            <Card className="flex items-center justify-between p-3 transition-colors hover:border-primary">
+            <Card className="flex flex-row items-center justify-between p-3 transition-colors hover:border-primary">
               <div className="flex items-center gap-3">
                 <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4" />

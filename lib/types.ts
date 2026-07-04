@@ -60,6 +60,7 @@ export interface UserProfile {
   accessibility: AccessibilitySettings;
   sensoryProfile?: SensoryAndCognitiveProfile;
   interestProfile?: InterestProfile;
+  voiceModeEnabled: boolean;
   xp: number;
   level: number;
   streakCount: number;

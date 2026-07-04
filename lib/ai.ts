@@ -1,7 +1,31 @@
 import { z } from "genkit";
-import { ai, flashModel } from "./genkit";
+import { ai, flashModel, ttsModel } from "./genkit";
+import { pcmBase64ToWavBase64 } from "./audio";
 import { LEARNING_STYLE_META, type LearningStyle, type StudyPack, type SensoryAndCognitiveProfile, type InterestProfile } from "./types";
 import { FlashcardAdapter } from "./adapters/flashcard-adapter";
+
+export const CHAT_NAV_TARGETS = ["dashboard", "upload", "packs", "squads", "profile", "active_pack", "pack"] as const;
+export type ChatNavTarget = (typeof CHAT_NAV_TARGETS)[number];
+
+const CHAT_NAV_ROUTES: Record<Exclude<ChatNavTarget, "active_pack" | "pack">, string> = {
+  dashboard: "/dashboard",
+  upload: "/upload",
+  packs: "/packs",
+  squads: "/squads",
+  profile: "/profile",
+};
+
+export function resolveChatNavRoute(
+  target: ChatNavTarget | null,
+  activePackId: string | null,
+  packId: string | null,
+  validPackIds: string[],
+): string | null {
+  if (!target) return null;
+  if (target === "active_pack") return activePackId ? `/pack/${activePackId}` : "/packs";
+  if (target === "pack") return packId && validPackIds.includes(packId) ? `/pack/${packId}` : "/packs";
+  return CHAT_NAV_ROUTES[target];
+}
 
 const studyPackSchema = z.object({
   overview: z.string(),
@@ -127,9 +151,23 @@ export async function generateStudyPack(input: {
   };
 }
 
+function formatPackDate(createdAt: unknown): string {
+  const value = createdAt as { toDate?: () => Date } | Date | string | null | undefined;
+  const date =
+    value && typeof (value as { toDate?: () => Date }).toDate === "function"
+      ? (value as { toDate: () => Date }).toDate()
+      : value instanceof Date
+        ? value
+        : typeof value === "string"
+          ? new Date(value)
+          : null;
+  if (!date || Number.isNaN(date.getTime())) return "unknown date";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function summarizePack(pack: StudyPack): string {
   return [
-    `Topic: ${pack.topic}`,
+    `Topic: ${pack.topic} (created ${formatPackDate(pack.createdAt)})`,
     `Overview: ${pack.overview}`,
     pack.keyPoints.length ? `Key points: ${pack.keyPoints.slice(0, 3).join("; ")}` : "",
     pack.flashcards.length
@@ -144,15 +182,23 @@ function summarizePack(pack: StudyPack): string {
     .join("\n");
 }
 
+const chatReplySchema = z.object({
+  reply: z.string(),
+  navigateTo: z.enum(CHAT_NAV_TARGETS).nullable(),
+  packId: z.string().nullable().optional(),
+  transcript: z.string().optional(),
+});
+
 export async function chatReply(input: {
   message: string;
   learningStyle: LearningStyle | null;
   readingLevel?: SensoryAndCognitiveProfile["readingLevel"];
   interestProfile?: InterestProfile;
   packs: StudyPack[];
+  activePackId?: string | null;
   history: { role: "user" | "assistant"; text: string }[];
-}): Promise<string> {
-
+  audio?: { url: string; contentType: string };
+}): Promise<{ reply: string; navigateTo: ChatNavTarget | null; packId?: string | null; transcript?: string }> {
   let simplificationPrompt = "";
   if (input.readingLevel === "plain_language") {
     simplificationPrompt = "Rewrite your responses in plain, simple language. Avoid complex jargon, keep sentences short, and ensure it is friendly for users with cognitive fatigue or dyslexia. Do not lose the core meaning.";
@@ -160,15 +206,41 @@ export async function chatReply(input: {
     simplificationPrompt = "Synthesize your responses into highly scannable, bulleted lists where possible. Highlight the most important information first. Use bolding for key terms.";
   }
 
+  const packList = input.packs
+    .map(
+      (pack) =>
+        `- "${pack.topic}" [id: ${pack.id}]${pack.id === input.activePackId ? " (currently open)" : ""}, created ${formatPackDate(pack.createdAt)}`,
+    )
+    .join("\n");
+  const detailedPacks = input.packs.slice(0, 5).map(summarizePack).join("\n\n");
+
   const systemText = [
     "You are a concise, encouraging study assistant embedded in a learning app.",
     "Answer in 2-3 short sentences unless more detail is clearly requested.",
+    "The app calls the user's study material 'study packs', but users may casually call them 'decks' or 'cards'; treat those terms as synonyms for study packs and never claim you lack access to them.",
     styleInstruction(input.learningStyle),
     getAnalogyEnginePrompt(input.interestProfile),
     simplificationPrompt,
     input.packs.length
-      ? `Here is the study material the user has been working on:\n\n${input.packs.map(summarizePack).join("\n\n")}`
+      ? [
+          `The user has ${input.packs.length} study pack(s), most recent first (the first one listed is the latest/newest):`,
+          packList,
+          "",
+          "Details for the most recent packs:",
+          detailedPacks,
+        ].join("\n")
       : "The user has no study packs yet; answer generally and encourage them to create one.",
+    "You can optionally direct the app to navigate the user to a screen by setting navigateTo. Only set it when the user is clearly asking to go/take them somewhere (e.g. 'take me to my flashcards', 'open my profile', 'show me my squad'); otherwise leave it null.",
+    "Valid navigateTo values: dashboard = home/dashboard screen; upload = the add/upload a new study pack screen; packs = the full list of the user's study packs (flashcards/decks); squads = the squads/social screen; profile = the user's profile screen; active_pack = the study pack currently open (only use if the user references 'this pack' / 'the current one' and one is open); pack = a specific study pack from the list above, identified by name or as 'my latest/newest deck/pack'.",
+    "When navigateTo is 'pack', also set packId to the exact id shown in brackets next to that pack in the list above. Never invent an id that isn't in the list. If the user asks for 'my latest' or 'newest' pack, use the id of the first pack listed. If they name a pack that doesn't closely match anything in the list, leave navigateTo null and mention in the reply that you couldn't find it.",
+    input.audio
+      ? [
+          "The user's message was spoken and is attached as audio. Listen carefully and transcribe it into the transcript field as accurately as possible, word for word.",
+          "Use the study pack topics, key points, and flashcard terms listed above as context to correctly resolve any unclear, technical, or domain-specific words the user says; prefer a transcription consistent with their study material over a generic-sounding guess.",
+          "Ignore filler sounds like 'um' or 'uh', but keep everything else verbatim, do not paraphrase or summarize.",
+          "Then treat that transcript as their message for your reply and navigation decision.",
+        ].join(" ")
+      : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -177,22 +249,113 @@ export async function chatReply(input: {
   const historyFromFirstUserTurn =
     firstUserTurnIndex === -1 ? [] : input.history.slice(firstUserTurnIndex);
 
+  const lastContent: ({ text: string } | { media: { url: string; contentType: string } })[] = [
+    { text: input.message || "(spoken message, transcribe the attached audio)" },
+  ];
+  if (input.audio) lastContent.push({ media: input.audio });
+
   const messages = [
     ...historyFromFirstUserTurn.map((turn) => ({
       role: turn.role === "assistant" ? ("model" as const) : ("user" as const),
       content: [{ text: turn.text }],
     })),
-    { role: "user" as const, content: [{ text: input.message }] },
+    { role: "user" as const, content: lastContent },
   ];
 
-  const { text } = await withRetry(() =>
+  const { output } = await withRetry(() =>
     ai.generate({
       model: flashModel,
       system: systemText,
       messages,
+      output: { schema: chatReplySchema },
     }),
   );
-  return text;
+
+  if (!output) throw new Error("Gemini returned no output for chat reply");
+
+  if (output.transcript !== undefined && output.transcript.trim() === "") {
+    return { reply: "I didn't catch that, could you try again?", navigateTo: null, transcript: "" };
+  }
+
+  return {
+    reply: output.reply,
+    navigateTo: output.navigateTo,
+    packId: output.packId ?? null,
+    transcript: output.transcript,
+  };
+}
+
+const definitionGradeSchema = z.object({
+  correct: z.boolean(),
+  feedback: z.string(),
+  transcript: z.string().optional(),
+});
+
+export async function gradeDefinitionAnswer(input: {
+  term: string;
+  definition: string;
+  answerText?: string;
+  answerAudio?: { url: string; contentType: string };
+}): Promise<{ correct: boolean; feedback: string; transcript?: string }> {
+  const hasAudio = Boolean(input.answerAudio);
+  const instructionParts: string[] = [
+    `You are grading a flashcard recall quiz.`,
+    `The definition shown to the user was: "${input.definition}"`,
+    `The correct term is: "${input.term}"`,
+    hasAudio
+      ? `The user's spoken answer is attached as audio. First transcribe exactly what they said into the transcript field, then grade it.`
+      : `The user typed this answer: "${input.answerText}"`,
+    `Mark correct if the answer is the correct term, a close synonym, an accepted alternate name, or has only minor typos or case differences. Mark incorrect if it names a different concept, is blank, or is clearly wrong. Ignore filler words like "um" or "uh" when grading a spoken answer.`,
+    `Return one short feedback sentence (max 20 words). Encourage the user if correct. If incorrect, gently state the correct term.`,
+  ];
+
+  const promptParts: ({ text: string } | { media: { url: string; contentType: string } })[] = [
+    { text: instructionParts.join("\n\n") },
+  ];
+  if (input.answerAudio) {
+    promptParts.push({ media: { url: input.answerAudio.url, contentType: input.answerAudio.contentType } });
+  }
+
+  const { output } = await withRetry(() =>
+    ai.generate({
+      model: flashModel,
+      prompt: promptParts,
+      output: { schema: definitionGradeSchema },
+    }),
+  );
+
+  if (!output) throw new Error("Gemini returned no output for definition grading");
+  return output;
+}
+
+export async function synthesizeSpeech(text: string): Promise<{ audioBase64: string; mimeType: string }> {
+  const result = await withRetry(() =>
+    ai.generate({
+      model: ttsModel,
+      prompt: text,
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: "Kore" },
+          },
+        },
+      },
+    }),
+  );
+
+  const mediaUrl = result.media?.url;
+  if (!mediaUrl) throw new Error("Gemini returned no audio for speech synthesis");
+
+  // mediaUrl is a data URL like "data:audio/L16;rate=24000;...;base64,<pcm>"
+  const base64Pcm = mediaUrl.split(",")[1];
+  const wavBase64 = pcmBase64ToWavBase64(base64Pcm, {
+    sampleRate: 24000,
+    numChannels: 1,
+    bitsPerSample: 16,
+  });
+
+  return { audioBase64: wavBase64, mimeType: "audio/wav" };
 }
 
 export function stripHtml(html: string): string {

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import { type UserProfile, defaultSensoryAndCognitiveProfile, defaultInterestProfile } from "@/lib/types";
@@ -65,15 +66,18 @@ function ProfileForm({
   const [analogyKeywordInput, setAnalogyKeywordInput] = useState("");
   const [saving, setSaving] = useState(false);
   const { voices } = useTextToSpeech();
+  const brainiac = useBrainiac();
 
   async function save() {
     if (!form) return;
     setSaving(true);
     try {
-      await updateProfile(form);
+      await updateProfile({ ...form, displayName: form.displayName.trim() || profile.displayName });
       toast.success("Profile saved");
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setSaving(false);
     }
@@ -142,6 +146,16 @@ function ProfileForm({
 
       <Card className="flex flex-col gap-3 p-4">
         <h2 className="text-sm font-medium">Basic Information</h2>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            value={form.displayName}
+            onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+            placeholder="Your username"
+            maxLength={30}
+          />
+        </div>
         <Input
           value={form.basicInfo.headline}
           onChange={(e) => setForm({ ...form, basicInfo: { ...form.basicInfo, headline: e.target.value } })}
@@ -319,6 +333,20 @@ function ProfileForm({
           value={form.accessibility}
           onChange={(accessibility) => setForm({ ...form, accessibility })}
         />
+
+        <h2 className="text-sm font-medium">Voice mode</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-sm">Definition quiz voice</Label>
+            <p className="text-xs text-muted-foreground">
+              Hear definitions read aloud and answer by speaking using Gemini AI.
+            </p>
+          </div>
+          <Switch
+            checked={form.voiceModeEnabled}
+            onCheckedChange={(v) => setForm({ ...form, voiceModeEnabled: v })}
+          />
+        </div>
 
         <h2 className="mt-4 text-sm font-medium">Sensory & Cognitive Profile</h2>
         <div className="flex flex-col gap-2">
