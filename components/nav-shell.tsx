@@ -83,9 +83,9 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
           <button
             onClick={async () => {
               await logout();
-              router.replace("/dashboard");
+              router.replace("/auth");
             }}
-            aria-label="Reset demo"
+            aria-label="Log out"
             className="text-muted-foreground hover:text-foreground"
           >
             <RiLogoutBoxRLine className="size-5" />
