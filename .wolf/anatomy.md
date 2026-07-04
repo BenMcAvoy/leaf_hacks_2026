@@ -41,3 +41,10 @@ lib/           Shared utilities and service wrappers
 - `components/accessibility-controls.tsx` — reduce motion / dyslexia font / low-stimulation / text size / line spacing; used by onboarding and profile
 - `components/learning-style-selector.tsx` — 4-card learning style picker; used by onboarding and profile
 - Prefer extending these shared components over re-implementing their views inline elsewhere
+
+## Theming
+- Light/dark tokens already fully defined in `app/globals.css` (`:root` = light, `.dark` = dark); `components/theme-provider.tsx` wraps `next-themes` (`attribute="class"`, `enableSystem`, `defaultTheme="light"` set in `app/layout.tsx`), plus a hidden `d` keyboard shortcut toggling light/dark
+- `components/theme-toggle.tsx` — visible sun/moon icon button (quick light/dark toggle, same logic as the `d` hotkey), mounted in `components/nav-shell.tsx` header between the streak counter and logout button
+- `components/appearance-controls.tsx` — full Light/Dark/System selector using `useTheme()` directly (theme is a client-only `next-themes`/localStorage concern, not part of the Firestore `UserProfile`); mounted in `app/(app)/profile/page.tsx` above the Accessibility section
+- Both components use `useSyncExternalStore` for the SSR-mount guard instead of `useState`+`useEffect` (see buglog.json set-state-in-effect entry)
+- No theme toggle exists on marketing/auth/onboarding routes (they don't use `NavShell`); only the authenticated app shell has one
