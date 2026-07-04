@@ -39,6 +39,7 @@ export async function generateStudyPack(input: {
           ? `Base the content on this source material:\n\n${input.textContent}`
           : "Base the content on the attached material.",
         "Produce: a short overview, 3 analogies, 3 key points, 6 flashcards, a 5-question multiple choice quiz (4 choices each, correctIndex 0-based), and a 5-day study plan.",
+        "Vary the position of the correct answer across quiz questions, don't always place it at the same index.",
       ]
         .filter(Boolean)
         .join("\n\n"),
