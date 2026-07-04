@@ -81,8 +81,10 @@ export function ChatBubble() {
               </div>
             ))}
             {sending && (
-              <div className="mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-muted-foreground">
-                Thinking...
+              <div className="mr-auto flex max-w-[85%] items-center gap-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-2.5">
+                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
               </div>
             )}
           </div>
