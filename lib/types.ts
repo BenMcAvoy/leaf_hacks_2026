@@ -1,19 +1,53 @@
 export type LearningStyle = "focusFlow" | "picturePath" | "clearRead" | "simpleSpeak";
 
+export interface SensoryAndCognitiveProfile {
+  uiComplexityLevel: "minimal" | "standard" | "rich";
+  cognitiveLoadLimit: number;
+  visualStimulation: "low" | "standard" | "high";
+  readingLevel: "plain_language" | "bulleted_synthesis" | "full_academic";
+}
+
+export const defaultSensoryAndCognitiveProfile: SensoryAndCognitiveProfile = {
+  uiComplexityLevel: "standard",
+  cognitiveLoadLimit: 20,
+  visualStimulation: "standard",
+  readingLevel: "full_academic",
+};
+
+export interface InterestProfile {
+  analogyEngineEnabled: boolean;
+  primaryInterestCategory: string;
+  specificInterestKeywords: string[];
+  intensityScale: "subtle" | "immersive";
+}
+
+export const defaultInterestProfile: InterestProfile = {
+  analogyEngineEnabled: false,
+  primaryInterestCategory: "",
+  specificInterestKeywords: [],
+  intensityScale: "subtle",
+};
+
+/** @deprecated */
 export interface AccessibilitySettings {
   reduceMotion: boolean;
   dyslexiaFont: boolean;
   textSize: "normal" | "large" | "xlarge";
   lineSpacing: "normal" | "relaxed";
   lowStimulation: boolean;
+  enableTTS: boolean;
+  ttsVoiceUri: string;
 }
 
+/** @deprecated */
 export const defaultAccessibilitySettings: AccessibilitySettings = {
   reduceMotion: false,
   dyslexiaFont: false,
   textSize: "normal",
   lineSpacing: "normal",
   lowStimulation: false,
+  enableTTS: false,
+  ttsVoiceUri: "",
 };
 
 export interface UserProfile {
@@ -22,7 +56,10 @@ export interface UserProfile {
   displayName: string;
   onboardingComplete: boolean;
   learningStyle: LearningStyle | null;
+  /** @deprecated */
   accessibility: AccessibilitySettings;
+  sensoryProfile?: SensoryAndCognitiveProfile;
+  interestProfile?: InterestProfile;
   xp: number;
   level: number;
   streakCount: number;
@@ -41,9 +78,27 @@ export interface UserProfile {
   skills: string[];
 }
 
+/** @deprecated */
 export interface Flashcard {
   front: string;
   back: string;
+}
+
+export interface MultiSensoryFlashcard {
+  id: string;
+  content: {
+    front: string;
+    back: string;
+  };
+  audio?: {
+    frontUri?: string;
+    backUri?: string;
+  };
+  visualMnemonic?: string;
+  metadata: {
+    complexityScore?: number;
+    structuralTags?: string[];
+  };
 }
 
 export interface QuizQuestion {
@@ -60,7 +115,8 @@ export interface StudyPack {
   overview: string;
   analogies: string[];
   keyPoints: string[];
-  flashcards: Flashcard[];
+  flashcards: MultiSensoryFlashcard[];
+  legacyFlashcards?: Flashcard[];
   quiz: QuizQuestion[];
   plan: string[];
   createdAt?: unknown;

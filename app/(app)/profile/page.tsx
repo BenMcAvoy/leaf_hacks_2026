@@ -8,12 +8,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { AccessibilityControls } from "@/components/accessibility-controls";
 import { AppearanceControls } from "@/components/appearance-controls";
 import { LearningStyleSelector } from "@/components/learning-style-selector";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
-import type { UserProfile } from "@/lib/types";
+import { type UserProfile, defaultSensoryAndCognitiveProfile, defaultInterestProfile } from "@/lib/types";
 import { toast } from "sonner";
 
 type Experience = UserProfile["experience"][number];
@@ -51,7 +62,9 @@ function ProfileForm({
 }) {
   const [form, setForm] = useState<UserProfile>(profile);
   const [skillInput, setSkillInput] = useState("");
+  const [analogyKeywordInput, setAnalogyKeywordInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const { voices } = useTextToSpeech();
 
   async function save() {
     if (!form) return;
@@ -88,6 +101,19 @@ function ProfileForm({
     if (!skillInput.trim()) return;
     setForm((f) => (f ? { ...f, skills: [...f.skills, skillInput.trim()] } : f));
     setSkillInput("");
+  }
+
+  function addAnalogyKeyword() {
+    if (!analogyKeywordInput.trim()) return;
+    setForm((f) => {
+      if (!f) return f;
+      const ip = f.interestProfile || defaultInterestProfile;
+      return { 
+        ...f, 
+        interestProfile: { ...ip, specificInterestKeywords: [...ip.specificInterestKeywords, analogyKeywordInput.trim()] } 
+      };
+    });
+    setAnalogyKeywordInput("");
   }
 
   return (
@@ -293,6 +319,200 @@ function ProfileForm({
           value={form.accessibility}
           onChange={(accessibility) => setForm({ ...form, accessibility })}
         />
+
+        <h2 className="mt-4 text-sm font-medium">Sensory & Cognitive Profile</h2>
+        <div className="flex flex-col gap-2">
+          <Label>Reading Level</Label>
+          <Select
+            value={form.sensoryProfile?.readingLevel ?? "full_academic"}
+            onValueChange={(v: any) =>
+              setForm({ 
+                ...form, 
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), readingLevel: v } 
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full_academic">Full Academic</SelectItem>
+              <SelectItem value="plain_language">Plain Language</SelectItem>
+              <SelectItem value="bulleted_synthesis">Bulleted Synthesis</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-2">
+          <Label>Visual Stimulation</Label>
+          <Select
+            value={form.sensoryProfile?.visualStimulation ?? "standard"}
+            onValueChange={(v: any) =>
+              setForm({ 
+                ...form, 
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), visualStimulation: v } 
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="standard">Standard</SelectItem>
+              <SelectItem value="low">Low (Dyslexia-friendly/Reduced Motion)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-2">
+          <Label>Cognitive Load Limit (Cards per session)</Label>
+          <Input 
+            type="number"
+            value={form.sensoryProfile?.cognitiveLoadLimit ?? 20}
+            onChange={(e) => 
+              setForm({ 
+                ...form, 
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), cognitiveLoadLimit: parseInt(e.target.value) || 20 } 
+              })
+            }
+          />
+        </div>
+        
+        <h3 className="mt-4 text-sm font-medium">Read Aloud (Text-to-Speech)</h3>
+        <div className="flex items-center justify-between">
+          <Label>Enable Read Aloud button</Label>
+          <Switch
+            checked={form.accessibility.enableTTS}
+            onCheckedChange={(v) =>
+              setForm({ ...form, accessibility: { ...form.accessibility, enableTTS: v } })
+            }
+          />
+        </div>
+        
+        {form.accessibility.enableTTS && (
+          <div className="flex flex-col gap-2">
+            <Label>Preferred Voice</Label>
+            <Select
+              value={form.accessibility.ttsVoiceUri || ""}
+              onValueChange={(v) =>
+                setForm({ ...form, accessibility: { ...form.accessibility, ttsVoiceUri: v || "" } })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a voice" />
+              </SelectTrigger>
+              <SelectContent>
+                {voices.length > 0 ? (
+                  voices.map((voice) => (
+                    <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name} ({voice.lang})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="default" disabled>
+                    Loading voices...
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </Card>
+
+      <Card className="flex flex-col gap-4 p-4">
+        <h2 className="text-sm font-medium">Hyper-Fixation Analogy Engine</h2>
+        <div className="flex items-center justify-between">
+          <Label aria-label="Enable Hyper-Fixation Analogy Engine">Enable Engine</Label>
+          <Switch
+            checked={form.interestProfile?.analogyEngineEnabled ?? false}
+            onCheckedChange={(v) =>
+              setForm({ 
+                ...form, 
+                interestProfile: { ...(form.interestProfile || defaultInterestProfile), analogyEngineEnabled: v } 
+              })
+            }
+          />
+        </div>
+
+        {(form.interestProfile?.analogyEngineEnabled) && (
+          <div className="flex flex-col gap-4 border-t pt-4">
+            <div className="flex flex-col gap-2">
+              <Label>Primary Interest Category</Label>
+              <Input
+                placeholder="e.g. Video Games, Anime, Sports..."
+                value={form.interestProfile?.primaryInterestCategory ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    interestProfile: { ...(form.interestProfile || defaultInterestProfile), primaryInterestCategory: e.target.value }
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Specific Interest Keywords</Label>
+              <div className="flex flex-wrap gap-2">
+                {(form.interestProfile?.specificInterestKeywords || []).map((keyword, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1">
+                    {keyword}
+                    <button
+                      onClick={() => {
+                        const ip = form.interestProfile || defaultInterestProfile;
+                        setForm({
+                          ...form,
+                          interestProfile: {
+                            ...ip,
+                            specificInterestKeywords: ip.specificInterestKeywords.filter((_, j) => j !== i)
+                          }
+                        });
+                      }}
+                      aria-label={`Remove ${keyword} tag`}
+                    >
+                      <RiCloseLine className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="analogyKeywordInput"
+                  value={analogyKeywordInput}
+                  onChange={(e) => setAnalogyKeywordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addAnalogyKeyword();
+                    }
+                  }}
+                  placeholder="e.g. Minecraft Redstone"
+                />
+                <Button variant="outline" onClick={addAnalogyKeyword}>
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Intensity Scale</Label>
+              <Tabs
+                value={form.interestProfile?.intensityScale ?? "subtle"}
+                onValueChange={(v: any) =>
+                  setForm({
+                    ...form,
+                    interestProfile: { ...(form.interestProfile || defaultInterestProfile), intensityScale: v }
+                  })
+                }
+              >
+                <TabsList className="grid grid-cols-2">
+                  <TabsTrigger value="subtle">Subtle</TabsTrigger>
+                  <TabsTrigger value="immersive">Immersive</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Button onClick={save} disabled={saving} size="lg">

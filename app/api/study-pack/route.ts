@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateStudyPack, stripHtml } from "@/lib/ai";
-import type { LearningStyle, StudyPack } from "@/lib/types";
+import type { LearningStyle, StudyPack, SensoryAndCognitiveProfile, InterestProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -8,6 +8,8 @@ interface StudyPackRequest {
   topic: string;
   sourceType: StudyPack["sourceType"];
   learningStyle: LearningStyle | null;
+  readingLevel?: SensoryAndCognitiveProfile["readingLevel"];
+  interestProfile?: InterestProfile;
   notes?: string;
   link?: string;
   fileUrl?: string;
@@ -16,7 +18,7 @@ interface StudyPackRequest {
 
 export async function POST(req: Request) {
   const body = (await req.json()) as StudyPackRequest;
-  const { topic, sourceType, learningStyle } = body;
+  const { topic, sourceType, learningStyle, readingLevel, interestProfile } = body;
 
   if (!topic?.trim()) {
     return NextResponse.json({ error: "topic is required" }, { status: 400 });
@@ -44,6 +46,8 @@ export async function POST(req: Request) {
       topic: topic.trim(),
       sourceType,
       learningStyle,
+      readingLevel,
+      interestProfile,
       textContent,
       media,
     });

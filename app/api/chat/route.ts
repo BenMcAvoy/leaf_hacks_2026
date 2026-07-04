@@ -44,6 +44,8 @@ export async function POST(req: Request) {
     const reply = await chatReply({
       message: body.message,
       learningStyle: profile?.learningStyle ?? null,
+      readingLevel: profile?.sensoryProfile?.readingLevel ?? "full_academic",
+      interestProfile: profile?.interestProfile,
       packs,
       history: body.history ?? [],
     });
