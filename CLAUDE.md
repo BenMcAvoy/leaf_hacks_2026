@@ -1,1 +1,1 @@
-C:/Users/Ben/leaf_hacks_2026/AGENTS.md
+@AGENTS.md

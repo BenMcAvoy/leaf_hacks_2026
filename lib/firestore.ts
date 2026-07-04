@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   type Firestore,
   type DocumentData,
+  type DocumentReference,
   type QueryConstraint,
   type Unsubscribe,
   type WithFieldValue,
@@ -69,7 +70,11 @@ export async function setDocument<T extends DocumentData>(
   data: WithFieldValue<T>,
   { merge = true }: { merge?: boolean } = {},
 ): Promise<void> {
-  await _setDoc(doc(getDb(), collectionPath, id), data, { merge });
+  await _setDoc(
+    doc(getDb(), collectionPath, id) as DocumentReference<T>,
+    data,
+    { merge },
+  );
 }
 
 /** Add a new document with an auto-generated ID. Returns the new document ID. */
