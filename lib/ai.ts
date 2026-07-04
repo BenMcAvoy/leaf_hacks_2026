@@ -1,5 +1,6 @@
 import { z } from "genkit";
-import { ai, flashModel } from "./genkit";
+import { ai, flashModel, ttsModel } from "./genkit";
+import { pcmBase64ToWavBase64 } from "./audio";
 import { LEARNING_STYLE_META, type LearningStyle, type StudyPack } from "./types";
 
 const studyPackSchema = z.object({
@@ -176,6 +177,79 @@ export async function chatReply(input: {
     }),
   );
   return text;
+}
+
+const definitionGradeSchema = z.object({
+  correct: z.boolean(),
+  feedback: z.string(),
+  transcript: z.string().optional(),
+});
+
+export async function gradeDefinitionAnswer(input: {
+  term: string;
+  definition: string;
+  answerText?: string;
+  answerAudio?: { url: string; contentType: string };
+}): Promise<{ correct: boolean; feedback: string; transcript?: string }> {
+  const hasAudio = Boolean(input.answerAudio);
+  const instructionParts: string[] = [
+    `You are grading a flashcard recall quiz.`,
+    `The definition shown to the user was: "${input.definition}"`,
+    `The correct term is: "${input.term}"`,
+    hasAudio
+      ? `The user's spoken answer is attached as audio. First transcribe exactly what they said into the transcript field, then grade it.`
+      : `The user typed this answer: "${input.answerText}"`,
+    `Mark correct if the answer is the correct term, a close synonym, an accepted alternate name, or has only minor typos or case differences. Mark incorrect if it names a different concept, is blank, or is clearly wrong. Ignore filler words like "um" or "uh" when grading a spoken answer.`,
+    `Return one short feedback sentence (max 20 words). Encourage the user if correct. If incorrect, gently state the correct term.`,
+  ];
+
+  const promptParts: ({ text: string } | { media: { url: string; contentType: string } })[] = [
+    { text: instructionParts.join("\n\n") },
+  ];
+  if (input.answerAudio) {
+    promptParts.push({ media: { url: input.answerAudio.url, contentType: input.answerAudio.contentType } });
+  }
+
+  const { output } = await withRetry(() =>
+    ai.generate({
+      model: flashModel,
+      prompt: promptParts,
+      output: { schema: definitionGradeSchema },
+    }),
+  );
+
+  if (!output) throw new Error("Gemini returned no output for definition grading");
+  return output;
+}
+
+export async function synthesizeSpeech(text: string): Promise<{ audioBase64: string; mimeType: string }> {
+  const result = await withRetry(() =>
+    ai.generate({
+      model: ttsModel,
+      prompt: text,
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: "Kore" },
+          },
+        },
+      },
+    }),
+  );
+
+  const mediaUrl = result.media?.url;
+  if (!mediaUrl) throw new Error("Gemini returned no audio for speech synthesis");
+
+  // mediaUrl is a data URL like "data:audio/L16;rate=24000;...;base64,<pcm>"
+  const base64Pcm = mediaUrl.split(",")[1];
+  const wavBase64 = pcmBase64ToWavBase64(base64Pcm, {
+    sampleRate: 24000,
+    numChannels: 1,
+    bitsPerSample: 16,
+  });
+
+  return { audioBase64: wavBase64, mimeType: "audio/wav" };
 }
 
 export function stripHtml(html: string): string {

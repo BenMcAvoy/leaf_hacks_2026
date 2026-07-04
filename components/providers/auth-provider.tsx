@@ -26,6 +26,7 @@ function newProfile(uid: string, email: string): UserProfile {
     onboardingComplete: false,
     learningStyle: null,
     accessibility: defaultAccessibilitySettings,
+    voiceModeEnabled: false,
     xp: 0,
     level: 1,
     streakCount: 0,

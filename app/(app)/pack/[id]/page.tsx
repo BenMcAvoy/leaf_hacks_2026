@@ -116,6 +116,11 @@ export default function StudyPackPage() {
             {pack.quiz.length} questions, ready when you are.
           </p>
           <Button onClick={() => router.push(`/pack/${id}/quiz`)}>Start quiz</Button>
+          {pack.flashcards.length > 0 && (
+            <Button variant="outline" onClick={() => router.push(`/pack/${id}/quiz/define`)}>
+              Definition mode
+            </Button>
+          )}
         </TabsContent>
 
         <TabsContent value="plan">

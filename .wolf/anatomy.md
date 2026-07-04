@@ -7,7 +7,7 @@
 - Tailwind CSS v4
 - Firebase 12 (Firestore, Analytics, Storage)
 - shadcn/ui + Base UI
-- Genkit + @genkit-ai/googleai (added, not yet wired up)
+- Genkit + @genkit-ai/googleai (fully wired: study pack generation, chat, definition grading, TTS)
 
 ## Directory Structure
 ```
@@ -21,8 +21,21 @@ lib/           Shared utilities and service wrappers
 ## Key Files
 - `lib/firebase.ts` — Firebase app + Analytics singleton
 - `lib/firestore.ts` — Typed Firestore wrapper (getDocument, getCollection, setDocument, addDocument, updateDocument, deleteDocument, subscribeToDocument, subscribeToCollection)
+- `lib/genkit.ts` — Genkit singleton (ai, flashModel = gemini-2.5-flash-lite, ttsModel = gemini-2.5-flash-preview-tts)
+- `lib/ai.ts` — Gemini AI functions: generateStudyPack, chatReply (both use withRetry), gradeDefinitionAnswer (Gemini grades free-text/audio answers), synthesizeSpeech (Gemini TTS returning WAV base64)
+- `lib/audio.ts` — pcmBase64ToWavBase64 utility: wraps raw Gemini PCM output in a WAV header for browser playback
 - `firestore.rules` — Firestore security rules
 - `firebase.json` — Firebase project config
+
+## API routes
+- `app/api/study-pack/route.ts` — POST, generates a study pack via Gemini
+- `app/api/chat/route.ts` — POST, chat assistant reply via Gemini
+- `app/api/quiz/grade-definition/route.ts` — POST, grades a typed or spoken definition-mode answer via Gemini
+- `app/api/quiz/speak/route.ts` — POST, synthesizes speech for a definition via Gemini TTS, returns WAV base64
+
+## Quiz modes
+- `app/(app)/pack/[id]/quiz/page.tsx` — MCQ mode: Gemini-generated multiple choice, graded client-side by index
+- `app/(app)/pack/[id]/quiz/define/page.tsx` — Definition mode: shows flashcard.back, user types or speaks flashcard.front, Gemini grades with tolerance for synonyms/typos. Supports optional voice mode (TTS reads definition, STT records spoken answer via MediaRecorder then sends audio to grade endpoint).
 
 ## Conventions
 - Firebase initialized as a lazy singleton in `lib/firebase.ts`
@@ -41,6 +54,12 @@ lib/           Shared utilities and service wrappers
 - `components/accessibility-controls.tsx` — reduce motion / dyslexia font / low-stimulation / text size / line spacing; used by onboarding and profile
 - `components/learning-style-selector.tsx` — 4-card learning style picker; used by onboarding and profile
 - Prefer extending these shared components over re-implementing their views inline elsewhere
+
+## Voice mode
+- `UserProfile.voiceModeEnabled: boolean` (defaults false, persisted to Firestore via updateProfile) controls voice mode for definition quizzes
+- Toggle exposed in `app/(app)/profile/page.tsx` under "Voice mode" section using `Switch` + `Label` from shadcn/ui
+- In definition quiz: TTS calls `POST /api/quiz/speak`; STT records via `MediaRecorder` (audio/webm), converts to data URL via `FileReader`, sends to `POST /api/quiz/grade-definition` with `answerAudio`; Gemini transcribes + grades in one call
+- Voice TTS/STT uses Gemini AI not browser Web Speech API; graceful fallback to text input on mic permission denial or TTS failure
 
 ## Theming
 - Light/dark tokens already fully defined in `app/globals.css` (`:root` = light, `.dark` = dark); `components/theme-provider.tsx` wraps `next-themes` (`attribute="class"`, `enableSystem`, `defaultTheme="light"` set in `app/layout.tsx`), plus a hidden `d` keyboard shortcut toggling light/dark
