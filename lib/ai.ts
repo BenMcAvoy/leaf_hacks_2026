@@ -1,6 +1,7 @@
 import { z } from "genkit";
 import { ai, flashModel } from "./genkit";
-import { LEARNING_STYLE_META, type LearningStyle, type StudyPack } from "./types";
+import { LEARNING_STYLE_META, type LearningStyle, type StudyPack, type SensoryAndCognitiveProfile, type InterestProfile } from "./types";
+import { FlashcardAdapter } from "./adapters/flashcard-adapter";
 
 const studyPackSchema = z.object({
   overview: z.string(),
@@ -56,18 +57,47 @@ function styleInstruction(style: LearningStyle | null): string {
   return `Tailor the writing style to "${meta.label}": ${meta.description}`;
 }
 
+function getAnalogyEnginePrompt(profile: InterestProfile | undefined): string {
+  if (!profile || !profile.analogyEngineEnabled || !profile.primaryInterestCategory) return "";
+
+  const tags = profile.specificInterestKeywords.length > 0 
+    ? `Specifically focusing on: ${profile.specificInterestKeywords.join(", ")}.` 
+    : "";
+
+  if (profile.intensityScale === "immersive") {
+    return `[HYPER-FIXATION OVERRIDE ACTIVE]
+You MUST rewrite all explanations entirely through the lens of "${profile.primaryInterestCategory}". ${tags}
+Do not just provide a single analogy; construct the entire pedagogical framework around this interest. Map core mechanisms (e.g. cellular respiration, calculus derivatives) directly to mechanics within the user's interest (e.g. Minecraft redstone logic, crafting recipes) ensuring factual accuracy is preserved.`;
+  }
+
+  return `[ANALOGY ENGINE ACTIVE]
+When explaining complex topics, please include at least one clear, brief analogy related to "${profile.primaryInterestCategory}". ${tags}`;
+}
+
 export async function generateStudyPack(input: {
   topic: string;
   sourceType: StudyPack["sourceType"];
   learningStyle: LearningStyle | null;
+  readingLevel?: SensoryAndCognitiveProfile["readingLevel"];
+  interestProfile?: InterestProfile;
   textContent?: string;
   media?: { url: string; contentType: string };
 }): Promise<Omit<StudyPack, "id" | "ownerId" | "createdAt">> {
+  
+  let simplificationPrompt = "";
+  if (input.readingLevel === "plain_language") {
+    simplificationPrompt = "Rewrite the output in plain, simple language. Avoid complex jargon, keep sentences short, and ensure it is friendly for users with cognitive fatigue or dyslexia. Do not lose the core meaning.";
+  } else if (input.readingLevel === "bulleted_synthesis") {
+    simplificationPrompt = "Synthesize the output into a highly scannable, bulleted list where possible. Highlight the most important information first for users who need hyper-focused, structurally clear content (e.g., ADHD). Use bolding for key terms.";
+  }
+
   const promptParts: ({ text: string } | { media: { url: string; contentType: string } })[] = [
     {
       text: [
         `You are generating a study pack for the topic "${input.topic}".`,
         styleInstruction(input.learningStyle),
+        getAnalogyEnginePrompt(input.interestProfile),
+        simplificationPrompt,
         input.textContent
           ? `Base the content on this source material:\n\n${input.textContent}`
           : "Base the content on the attached material.",
@@ -92,6 +122,8 @@ export async function generateStudyPack(input: {
     topic: input.topic,
     sourceType: input.sourceType,
     ...output,
+    flashcards: FlashcardAdapter.migrateLegacyFlashcards(output.flashcards),
+    legacyFlashcards: output.flashcards,
   };
 }
 
@@ -103,7 +135,7 @@ function summarizePack(pack: StudyPack): string {
     pack.flashcards.length
       ? `Sample flashcards: ${pack.flashcards
           .slice(0, 2)
-          .map((f) => `${f.front} -> ${f.back}`)
+          .map((f) => `${f.content.front} -> ${f.content.back}`)
           .join(" | ")}`
       : "",
     pack.quiz.length ? `Quiz covers: ${pack.quiz.slice(0, 3).map((q) => q.question).join("; ")}` : "",
@@ -115,13 +147,25 @@ function summarizePack(pack: StudyPack): string {
 export async function chatReply(input: {
   message: string;
   learningStyle: LearningStyle | null;
+  readingLevel?: SensoryAndCognitiveProfile["readingLevel"];
+  interestProfile?: InterestProfile;
   packs: StudyPack[];
   history: { role: "user" | "assistant"; text: string }[];
 }): Promise<string> {
+
+  let simplificationPrompt = "";
+  if (input.readingLevel === "plain_language") {
+    simplificationPrompt = "Rewrite your responses in plain, simple language. Avoid complex jargon, keep sentences short, and ensure it is friendly for users with cognitive fatigue or dyslexia. Do not lose the core meaning.";
+  } else if (input.readingLevel === "bulleted_synthesis") {
+    simplificationPrompt = "Synthesize your responses into highly scannable, bulleted lists where possible. Highlight the most important information first. Use bolding for key terms.";
+  }
+
   const systemText = [
     "You are a concise, encouraging study assistant embedded in a learning app.",
     "Answer in 2-3 short sentences unless more detail is clearly requested.",
     styleInstruction(input.learningStyle),
+    getAnalogyEnginePrompt(input.interestProfile),
+    simplificationPrompt,
     input.packs.length
       ? `Here is the study material the user has been working on:\n\n${input.packs.map(summarizePack).join("\n\n")}`
       : "The user has no study packs yet; answer generally and encourage them to create one.",
