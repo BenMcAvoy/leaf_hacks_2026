@@ -1,5 +1,6 @@
 import { type FirebaseApp, getApps, initializeApp } from "firebase/app";
 import { type Analytics, isSupported, getAnalytics } from "firebase/analytics";
+import { getAuth, browserLocalPersistence, type Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCuiNFR6rRAxsF_rUWGHXcZ6uexvfEr2JE",
@@ -13,6 +14,16 @@ const firebaseConfig = {
 
 export const firebaseApp: FirebaseApp =
   getApps()[0] ?? initializeApp(firebaseConfig);
+
+let auth: Auth | null = null;
+
+export function getFirebaseAuth(): Auth {
+  if (!auth) {
+    auth = getAuth(firebaseApp);
+    auth.setPersistence(browserLocalPersistence);
+  }
+  return auth;
+}
 
 let analyticsPromise: Promise<Analytics | null> | null = null;
 

@@ -127,3 +127,39 @@
     @apply font-sans;
     }
 }
+
+html.reduce-motion, html.reduce-motion * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.dyslexia-font {
+  font-family: "Comic Sans MS", "Comic Sans", Verdana, sans-serif;
+  letter-spacing: 0.02em;
+  word-spacing: 0.08em;
+}
+
+html[data-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-text-size="xlarge"] {
+  font-size: 125%;
+}
+
+html[data-line-spacing="relaxed"] body {
+  line-height: 1.85;
+}
+
+html.low-stimulation {
+  --primary: oklch(0.6 0.06 250);
+  --accent: oklch(0.9 0.01 250);
+  --destructive: oklch(0.6 0.08 30);
+}
+
+html.low-stimulation.dark {
+  --primary: oklch(0.55 0.05 250);
+  --accent: oklch(0.3 0.01 250);
+}
