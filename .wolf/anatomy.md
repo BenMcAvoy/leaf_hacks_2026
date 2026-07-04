@@ -61,6 +61,13 @@ lib/           Shared utilities and service wrappers
 - In definition quiz: TTS calls `POST /api/quiz/speak`; STT records via `MediaRecorder` (audio/webm), converts to data URL via `FileReader`, sends to `POST /api/quiz/grade-definition` with `answerAudio`; Gemini transcribes + grades in one call
 - Voice TTS/STT uses Gemini AI not browser Web Speech API; graceful fallback to text input on mic permission denial or TTS failure
 
+## Chat assistant voice input + navigation
+- `components/chat-bubble.tsx` mic button (input row, left of text field) shown only when `profile?.voiceModeEnabled`; reuses the same MediaRecorder audio/webm -> base64 dataUrl -> FileReader pattern as the definition quiz, no new STT code
+- `send`/mic both funnel through a shared `sendPayload({ message?, audio? }, optimisticUserText?)` in chat-bubble.tsx that POSTs to `/api/chat`, appends transcript as a user bubble when audio was sent, and calls `router.push` (from `next/navigation`) when the response includes `navigateTo`
+- `lib/ai.ts` `chatReply` now returns `{ reply, navigateTo, transcript? }` (Genkit `z` structured `output: { schema }`, matching `generateStudyPack`/`gradeDefinitionAnswer`) instead of a plain string; accepts optional `audio: { url, contentType }` folded into the same Gemini call (transcribe + reply + nav-intent in one request, no separate `/api/transcribe` route)
+- `navigateTo` is a closed Zod enum `CHAT_NAV_TARGETS` (`dashboard | upload | packs | squads | profile | active_pack`) exported from `lib/ai.ts`; the model can never emit a free-form path. `resolveChatNavRoute(target, activePackId)` (also `lib/ai.ts`) turns the enum into an actual URL server-side in `app/api/chat/route.ts`, using the already ownership-checked `activePackId` - the client only ever receives a ready path string or null
+- `app/api/chat/route.ts` request body now accepts `message` (optional) OR `audio: { dataUrl, contentType }`; response is `{ reply, navigateTo, transcript }`
+
 ## Theming
 - Light/dark tokens already fully defined in `app/globals.css` (`:root` = light, `.dark` = dark); `components/theme-provider.tsx` wraps `next-themes` (`attribute="class"`, `enableSystem`, `defaultTheme="light"` set in `app/layout.tsx`), plus a hidden `d` keyboard shortcut toggling light/dark
 - `components/theme-toggle.tsx` — visible sun/moon icon button (quick light/dark toggle, same logic as the `d` hotkey), mounted in `components/nav-shell.tsx` header between the streak counter and logout button

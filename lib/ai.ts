@@ -3,6 +3,23 @@ import { ai, flashModel, ttsModel } from "./genkit";
 import { pcmBase64ToWavBase64 } from "./audio";
 import { LEARNING_STYLE_META, type LearningStyle, type StudyPack } from "./types";
 
+export const CHAT_NAV_TARGETS = ["dashboard", "upload", "packs", "squads", "profile", "active_pack"] as const;
+export type ChatNavTarget = (typeof CHAT_NAV_TARGETS)[number];
+
+const CHAT_NAV_ROUTES: Record<Exclude<ChatNavTarget, "active_pack">, string> = {
+  dashboard: "/dashboard",
+  upload: "/upload",
+  packs: "/packs",
+  squads: "/squads",
+  profile: "/profile",
+};
+
+export function resolveChatNavRoute(target: ChatNavTarget | null, activePackId: string | null): string | null {
+  if (!target) return null;
+  if (target === "active_pack") return activePackId ? `/pack/${activePackId}` : "/packs";
+  return CHAT_NAV_ROUTES[target];
+}
+
 const studyPackSchema = z.object({
   overview: z.string(),
   analogies: z.array(z.string()),
@@ -127,13 +144,20 @@ function summarizePack(pack: StudyPack): string {
     .join("\n");
 }
 
+const chatReplySchema = z.object({
+  reply: z.string(),
+  navigateTo: z.enum(CHAT_NAV_TARGETS).nullable(),
+  transcript: z.string().optional(),
+});
+
 export async function chatReply(input: {
   message: string;
   learningStyle: LearningStyle | null;
   packs: StudyPack[];
   activePackId?: string | null;
   history: { role: "user" | "assistant"; text: string }[];
-}): Promise<string> {
+  audio?: { url: string; contentType: string };
+}): Promise<{ reply: string; navigateTo: ChatNavTarget | null; transcript?: string }> {
   const packList = input.packs
     .map((pack) => `- "${pack.topic}"${pack.id === input.activePackId ? " (currently open)" : ""}, created ${formatPackDate(pack.createdAt)}`)
     .join("\n");
@@ -153,6 +177,12 @@ export async function chatReply(input: {
           detailedPacks,
         ].join("\n")
       : "The user has no study packs yet; answer generally and encourage them to create one.",
+    "You can optionally direct the app to navigate the user to a screen by setting navigateTo. Only set it when the user is clearly asking to go/take them somewhere (e.g. 'take me to my flashcards', 'open my profile', 'show me my squad'); otherwise leave it null.",
+    "Valid navigateTo values: dashboard = home/dashboard screen; upload = the add/upload a new study pack screen; packs = the full list of the user's study packs (flashcards/decks); squads = the squads/social screen; profile = the user's profile screen; active_pack = the study pack currently open (only use if the user references 'this pack' / 'the current one' and one is open).",
+    "If the user asks to go to a specific pack by name that is not the active pack, leave navigateTo null and mention in the reply that they can find it in their pack list instead.",
+    input.audio
+      ? "The user's message was spoken and is attached as audio. First transcribe exactly what they said into the transcript field, then treat that transcript as their message for your reply and navigation decision."
+      : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -161,22 +191,35 @@ export async function chatReply(input: {
   const historyFromFirstUserTurn =
     firstUserTurnIndex === -1 ? [] : input.history.slice(firstUserTurnIndex);
 
+  const lastContent: ({ text: string } | { media: { url: string; contentType: string } })[] = [
+    { text: input.message || "(spoken message, transcribe the attached audio)" },
+  ];
+  if (input.audio) lastContent.push({ media: input.audio });
+
   const messages = [
     ...historyFromFirstUserTurn.map((turn) => ({
       role: turn.role === "assistant" ? ("model" as const) : ("user" as const),
       content: [{ text: turn.text }],
     })),
-    { role: "user" as const, content: [{ text: input.message }] },
+    { role: "user" as const, content: lastContent },
   ];
 
-  const { text } = await withRetry(() =>
+  const { output } = await withRetry(() =>
     ai.generate({
       model: flashModel,
       system: systemText,
       messages,
+      output: { schema: chatReplySchema },
     }),
   );
-  return text;
+
+  if (!output) throw new Error("Gemini returned no output for chat reply");
+
+  if (output.transcript !== undefined && output.transcript.trim() === "") {
+    return { reply: "I didn't catch that, could you try again?", navigateTo: null, transcript: "" };
+  }
+
+  return { reply: output.reply, navigateTo: output.navigateTo, transcript: output.transcript };
 }
 
 const definitionGradeSchema = z.object({
