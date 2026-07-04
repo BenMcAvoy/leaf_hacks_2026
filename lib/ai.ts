@@ -95,9 +95,23 @@ export async function generateStudyPack(input: {
   };
 }
 
+function formatPackDate(createdAt: unknown): string {
+  const value = createdAt as { toDate?: () => Date } | Date | string | null | undefined;
+  const date =
+    value && typeof (value as { toDate?: () => Date }).toDate === "function"
+      ? (value as { toDate: () => Date }).toDate()
+      : value instanceof Date
+        ? value
+        : typeof value === "string"
+          ? new Date(value)
+          : null;
+  if (!date || Number.isNaN(date.getTime())) return "unknown date";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function summarizePack(pack: StudyPack): string {
   return [
-    `Topic: ${pack.topic}`,
+    `Topic: ${pack.topic} (created ${formatPackDate(pack.createdAt)})`,
     `Overview: ${pack.overview}`,
     pack.keyPoints.length ? `Key points: ${pack.keyPoints.slice(0, 3).join("; ")}` : "",
     pack.flashcards.length
@@ -116,14 +130,27 @@ export async function chatReply(input: {
   message: string;
   learningStyle: LearningStyle | null;
   packs: StudyPack[];
+  activePackId?: string | null;
   history: { role: "user" | "assistant"; text: string }[];
 }): Promise<string> {
+  const packList = input.packs
+    .map((pack) => `- "${pack.topic}"${pack.id === input.activePackId ? " (currently open)" : ""}, created ${formatPackDate(pack.createdAt)}`)
+    .join("\n");
+  const detailedPacks = input.packs.slice(0, 5).map(summarizePack).join("\n\n");
+
   const systemText = [
     "You are a concise, encouraging study assistant embedded in a learning app.",
     "Answer in 2-3 short sentences unless more detail is clearly requested.",
+    "The app calls the user's study material 'study packs', but users may casually call them 'decks' or 'cards'; treat those terms as synonyms for study packs and never claim you lack access to them.",
     styleInstruction(input.learningStyle),
     input.packs.length
-      ? `Here is the study material the user has been working on:\n\n${input.packs.map(summarizePack).join("\n\n")}`
+      ? [
+          `The user has ${input.packs.length} study pack(s), most recent first:`,
+          packList,
+          "",
+          "Details for the most recent packs:",
+          detailedPacks,
+        ].join("\n")
       : "The user has no study packs yet; answer generally and encourage them to create one.",
   ]
     .filter(Boolean)
