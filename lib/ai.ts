@@ -170,12 +170,13 @@ function formatPackDate(createdAt: unknown): string {
 }
 
 function summarizePack(pack: StudyPack): string {
+  const flashcards = FlashcardAdapter.normalizeFlashcards(pack.flashcards);
   return [
     `Topic: ${pack.topic} (created ${formatPackDate(pack.createdAt)})`,
     `Overview: ${pack.overview}`,
     pack.keyPoints.length ? `Key points: ${pack.keyPoints.slice(0, 3).join("; ")}` : "",
-    pack.flashcards.length
-      ? `Sample flashcards: ${pack.flashcards
+    flashcards.length
+      ? `Sample flashcards: ${flashcards
           .slice(0, 2)
           .map((f) => `${f.content.front} -> ${f.content.back}`)
           .join(" | ")}`

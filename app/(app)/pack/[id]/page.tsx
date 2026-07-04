@@ -39,11 +39,13 @@ export default function StudyPackPage() {
     async function loadPack() {
       if (id === "demo-newtons-laws") {
         const stored = window.sessionStorage.getItem("study-flow-demo-pack");
-        setPack(stored ? (JSON.parse(stored) as StudyPack) : MOCK_STUDY_PACK);
+        const demo = stored ? (JSON.parse(stored) as StudyPack) : MOCK_STUDY_PACK;
+        setPack({ ...demo, flashcards: FlashcardAdapter.normalizeFlashcards(demo.flashcards) });
         return;
       }
       const data = await getDocument<StudyPack>("studyPacks", id);
-      setPack(data ?? MOCK_STUDY_PACK);
+      const resolved = data ?? MOCK_STUDY_PACK;
+      setPack({ ...resolved, flashcards: FlashcardAdapter.normalizeFlashcards(resolved.flashcards) });
     }
 
     void loadPack();

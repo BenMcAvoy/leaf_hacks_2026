@@ -27,4 +27,15 @@ export class FlashcardAdapter {
   static migrateLegacyFlashcards(oldCards: Flashcard[]): MultiSensoryFlashcard[] {
     return oldCards.map((card) => this.migrateLegacyFlashcard(card));
   }
+
+  /**
+   * Normalizes a possibly-mixed array of flashcards (some already
+   * MultiSensoryFlashcard, some still the legacy {front, back} shape from
+   * documents written before this migration existed) into MultiSensoryFlashcard[].
+   */
+  static normalizeFlashcards(cards: (MultiSensoryFlashcard | Flashcard)[]): MultiSensoryFlashcard[] {
+    return cards.map((card) =>
+      "content" in card ? card : this.migrateLegacyFlashcard(card),
+    );
+  }
 }

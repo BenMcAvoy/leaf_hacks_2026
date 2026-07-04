@@ -20,6 +20,7 @@ import { useActivePack } from "@/components/providers/active-pack-provider";
 import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { getDocument } from "@/lib/firestore";
 import { xpForQuizResult, updateStreak, applyXp } from "@/lib/gamification";
+import { FlashcardAdapter } from "@/lib/adapters/flashcard-adapter";
 import type { StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -53,7 +54,10 @@ export default function DefineQuizPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    getDocument<StudyPack>("studyPacks", id).then(setPack);
+    getDocument<StudyPack>("studyPacks", id).then((data) => {
+      if (!data) return;
+      setPack({ ...data, flashcards: FlashcardAdapter.normalizeFlashcards(data.flashcards) });
+    });
   }, [id]);
 
   useEffect(() => {
