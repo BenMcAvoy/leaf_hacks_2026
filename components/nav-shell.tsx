@@ -79,48 +79,59 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 pb-24">
+      <main className="flex-1 pb-32">
         <HomeContent>{children}</HomeContent>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t bg-background/95 py-2 backdrop-blur">
-        {NAV_ITEMS.map((item) => {
-          const active = pathname?.startsWith(item.href);
-          const Icon = active ? item.activeIcon : item.icon;
-          const isHome = item.href === HOME_PATH;
+      {/* One UI floating pill taskbar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center pb-5 px-6 pointer-events-none">
+        <nav
+          className="pointer-events-auto flex items-center gap-1 rounded-[2rem] border border-border/40 bg-background/85 px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)" }}
+        >
+          {NAV_ITEMS.map((item) => {
+            const active = pathname?.startsWith(item.href);
+            const Icon = active ? item.activeIcon : item.icon;
+            const isHome = item.href === HOME_PATH;
 
-          if (isHome) {
-            return (
-              <button
-                key={item.href}
-                type="button"
-                onClick={goHome}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg px-4 py-1 text-xs transition-colors",
-                  active ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <Icon className="size-5" />
-                {item.label}
-              </button>
+            const itemClass = cn(
+              "relative flex flex-col items-center gap-0.5 rounded-[1.5rem] px-5 py-2 text-[11px] font-medium transition-all duration-200 select-none",
+              active
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground",
             );
-          }
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-lg px-4 py-1 text-xs transition-colors",
-                active ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              <Icon className="size-5" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+            const content = (
+              <>
+                {active && (
+                  <span className="absolute inset-0 rounded-[1.5rem] bg-primary/10" />
+                )}
+                <Icon className="relative size-[22px]" />
+                <span className="relative leading-none">{item.label}</span>
+              </>
+            );
+
+            if (isHome) {
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={goHome}
+                  className={itemClass}
+                >
+                  {content}
+                </button>
+              );
+            }
+
+            return (
+              <Link key={item.href} href={item.href} className={itemClass}>
+                {content}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }
