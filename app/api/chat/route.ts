@@ -46,7 +46,7 @@ export async function POST(req: Request) {
         ? [activePack, ...recentPacks]
         : recentPacks;
 
-    const { reply, navigateTo, transcript } = await chatReply({
+    const { reply, navigateTo, packId, transcript } = await chatReply({
       message: body.message ?? "",
       learningStyle: profile?.learningStyle ?? null,
       packs,
@@ -54,7 +54,12 @@ export async function POST(req: Request) {
       history: body.history ?? [],
       audio: body.audio ? { url: body.audio.dataUrl, contentType: body.audio.contentType } : undefined,
     });
-    const path = resolveChatNavRoute(navigateTo, activePack?.id ?? null);
+    const path = resolveChatNavRoute(
+      navigateTo,
+      activePack?.id ?? null,
+      packId ?? null,
+      packs.map((pack) => pack.id).filter((id): id is string => Boolean(id)),
+    );
     return NextResponse.json({ reply, navigateTo: path, transcript });
   } catch (err) {
     console.error("Failed to get chat reply:", err);

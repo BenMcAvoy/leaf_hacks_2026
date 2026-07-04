@@ -3,10 +3,10 @@ import { ai, flashModel, ttsModel } from "./genkit";
 import { pcmBase64ToWavBase64 } from "./audio";
 import { LEARNING_STYLE_META, type LearningStyle, type StudyPack } from "./types";
 
-export const CHAT_NAV_TARGETS = ["dashboard", "upload", "packs", "squads", "profile", "active_pack"] as const;
+export const CHAT_NAV_TARGETS = ["dashboard", "upload", "packs", "squads", "profile", "active_pack", "pack"] as const;
 export type ChatNavTarget = (typeof CHAT_NAV_TARGETS)[number];
 
-const CHAT_NAV_ROUTES: Record<Exclude<ChatNavTarget, "active_pack">, string> = {
+const CHAT_NAV_ROUTES: Record<Exclude<ChatNavTarget, "active_pack" | "pack">, string> = {
   dashboard: "/dashboard",
   upload: "/upload",
   packs: "/packs",
@@ -14,9 +14,15 @@ const CHAT_NAV_ROUTES: Record<Exclude<ChatNavTarget, "active_pack">, string> = {
   profile: "/profile",
 };
 
-export function resolveChatNavRoute(target: ChatNavTarget | null, activePackId: string | null): string | null {
+export function resolveChatNavRoute(
+  target: ChatNavTarget | null,
+  activePackId: string | null,
+  packId: string | null,
+  validPackIds: string[],
+): string | null {
   if (!target) return null;
   if (target === "active_pack") return activePackId ? `/pack/${activePackId}` : "/packs";
+  if (target === "pack") return packId && validPackIds.includes(packId) ? `/pack/${packId}` : "/packs";
   return CHAT_NAV_ROUTES[target];
 }
 
@@ -147,6 +153,7 @@ function summarizePack(pack: StudyPack): string {
 const chatReplySchema = z.object({
   reply: z.string(),
   navigateTo: z.enum(CHAT_NAV_TARGETS).nullable(),
+  packId: z.string().nullable().optional(),
   transcript: z.string().optional(),
 });
 
@@ -157,9 +164,12 @@ export async function chatReply(input: {
   activePackId?: string | null;
   history: { role: "user" | "assistant"; text: string }[];
   audio?: { url: string; contentType: string };
-}): Promise<{ reply: string; navigateTo: ChatNavTarget | null; transcript?: string }> {
+}): Promise<{ reply: string; navigateTo: ChatNavTarget | null; packId?: string | null; transcript?: string }> {
   const packList = input.packs
-    .map((pack) => `- "${pack.topic}"${pack.id === input.activePackId ? " (currently open)" : ""}, created ${formatPackDate(pack.createdAt)}`)
+    .map(
+      (pack) =>
+        `- "${pack.topic}" [id: ${pack.id}]${pack.id === input.activePackId ? " (currently open)" : ""}, created ${formatPackDate(pack.createdAt)}`,
+    )
     .join("\n");
   const detailedPacks = input.packs.slice(0, 5).map(summarizePack).join("\n\n");
 
@@ -170,7 +180,7 @@ export async function chatReply(input: {
     styleInstruction(input.learningStyle),
     input.packs.length
       ? [
-          `The user has ${input.packs.length} study pack(s), most recent first:`,
+          `The user has ${input.packs.length} study pack(s), most recent first (the first one listed is the latest/newest):`,
           packList,
           "",
           "Details for the most recent packs:",
@@ -178,8 +188,8 @@ export async function chatReply(input: {
         ].join("\n")
       : "The user has no study packs yet; answer generally and encourage them to create one.",
     "You can optionally direct the app to navigate the user to a screen by setting navigateTo. Only set it when the user is clearly asking to go/take them somewhere (e.g. 'take me to my flashcards', 'open my profile', 'show me my squad'); otherwise leave it null.",
-    "Valid navigateTo values: dashboard = home/dashboard screen; upload = the add/upload a new study pack screen; packs = the full list of the user's study packs (flashcards/decks); squads = the squads/social screen; profile = the user's profile screen; active_pack = the study pack currently open (only use if the user references 'this pack' / 'the current one' and one is open).",
-    "If the user asks to go to a specific pack by name that is not the active pack, leave navigateTo null and mention in the reply that they can find it in their pack list instead.",
+    "Valid navigateTo values: dashboard = home/dashboard screen; upload = the add/upload a new study pack screen; packs = the full list of the user's study packs (flashcards/decks); squads = the squads/social screen; profile = the user's profile screen; active_pack = the study pack currently open (only use if the user references 'this pack' / 'the current one' and one is open); pack = a specific study pack from the list above, identified by name or as 'my latest/newest deck/pack'.",
+    "When navigateTo is 'pack', also set packId to the exact id shown in brackets next to that pack in the list above. Never invent an id that isn't in the list. If the user asks for 'my latest' or 'newest' pack, use the id of the first pack listed. If they name a pack that doesn't closely match anything in the list, leave navigateTo null and mention in the reply that you couldn't find it.",
     input.audio
       ? "The user's message was spoken and is attached as audio. First transcribe exactly what they said into the transcript field, then treat that transcript as their message for your reply and navigation decision."
       : "",
@@ -219,7 +229,12 @@ export async function chatReply(input: {
     return { reply: "I didn't catch that, could you try again?", navigateTo: null, transcript: "" };
   }
 
-  return { reply: output.reply, navigateTo: output.navigateTo, transcript: output.transcript };
+  return {
+    reply: output.reply,
+    navigateTo: output.navigateTo,
+    packId: output.packId ?? null,
+    transcript: output.transcript,
+  };
 }
 
 const definitionGradeSchema = z.object({
