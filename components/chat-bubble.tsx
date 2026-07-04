@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useActivePack } from "@/components/providers/active-pack-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -24,6 +25,12 @@ export function ChatBubble() {
   ]);
   const { user } = useAuth();
   const { activePackId } = useActivePack();
+  const brainiac = useBrainiac();
+
+  function toggleOpen() {
+    if (!open) brainiac.show("greeting", "Need a hand studying?");
+    setOpen((v) => !v);
+  }
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -33,6 +40,7 @@ export function ChatBubble() {
     setMessages((m) => [...m, { role: "user", text: trimmed }]);
     setInput("");
     setSending(true);
+    brainiac.show("thinking");
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -47,8 +55,10 @@ export function ChatBubble() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to get a reply");
       setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
+      brainiac.show("happy");
     } catch (err) {
       toast.error(getFriendlyErrorMessage(err, "The study assistant couldn't respond. Please try again."));
+      brainiac.show("error");
     } finally {
       setSending(false);
     }
@@ -105,7 +115,7 @@ export function ChatBubble() {
       <Button
         size="icon"
         className="size-14 rounded-full shadow-xl"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         aria-label="Toggle study assistant chat"
       >
         <RiSparkling2Line className="size-6" />

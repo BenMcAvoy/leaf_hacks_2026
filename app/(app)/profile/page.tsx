@@ -4,11 +4,9 @@ import { useState } from "react";
 import { RiAddLine, RiCloseLine, RiMedalLine } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -18,6 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { AccessibilityControls } from "@/components/accessibility-controls";
+import { LearningStyleSelector } from "@/components/learning-style-selector";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
@@ -303,17 +305,10 @@ function ProfileForm({
 
       <Card className="flex flex-col gap-4 p-4">
         <h2 className="text-sm font-medium">Learning style</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {(Object.keys(LEARNING_STYLE_META) as LearningStyle[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => setForm({ ...form, learningStyle: key })}
-              className={`rounded-lg border p-3 text-left text-sm ${form.learningStyle === key ? "border-primary bg-primary/5" : ""}`}
-            >
-              {LEARNING_STYLE_META[key].label}
-            </button>
-          ))}
-        </div>
+        <LearningStyleSelector
+          value={form.learningStyle}
+          onChange={(learningStyle) => setForm({ ...form, learningStyle })}
+        />
 
         <h2 className="mt-4 text-sm font-medium">Sensory & Cognitive Profile</h2>
         <div className="flex flex-col gap-2">
@@ -374,45 +369,11 @@ function ProfileForm({
           />
         </div>
         
-        <h3 className="mt-4 text-sm font-medium">Read Aloud (Text-to-Speech)</h3>
-        <div className="flex items-center justify-between">
-          <Label>Enable Read Aloud button</Label>
-          <Switch
-            checked={form.accessibility.enableTTS}
-            onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, enableTTS: v } })
-            }
-          />
-        </div>
-        
-        {form.accessibility.enableTTS && (
-          <div className="flex flex-col gap-2">
-            <Label>Preferred Voice</Label>
-            <Select
-              value={form.accessibility.ttsVoiceUri || ""}
-              onValueChange={(v) =>
-                setForm({ ...form, accessibility: { ...form.accessibility, ttsVoiceUri: v || "" } })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a voice" />
-              </SelectTrigger>
-              <SelectContent>
-                {voices.length > 0 ? (
-                  voices.map((voice) => (
-                    <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
-                      {voice.name} ({voice.lang})
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="default" disabled>
-                    Loading voices...
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <h2 className="mt-4 text-sm font-medium">Accessibility</h2>
+        <AccessibilityControls
+          value={form.accessibility}
+          onChange={(accessibility) => setForm({ ...form, accessibility })}
+        />
       </Card>
 
       <Card className="flex flex-col gap-4 p-4">
