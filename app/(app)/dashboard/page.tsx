@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   RiSdCardLine,
   RiQuestionAnswerLine,
@@ -15,14 +16,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/providers/auth-provider";
-import { XP_PER_LEVEL } from "@/lib/types";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
+import { subscribeToCollection, where, orderBy, limit } from "@/lib/firestore";
+import { StudyPackList } from "@/components/study-pack-list";
+import { XP_PER_LEVEL, type StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const QUICK_ACTIONS = [
-  { key: "flashcards", label: "Generate AI Flashcards", icon: RiSdCardLine },
-  { key: "homework", label: "Homework Helper", icon: RiQuestionAnswerLine },
-  { key: "plan", label: "Create Study Plan", icon: RiCalendarScheduleLine },
-  { key: "understand", label: "Understand a Topic", icon: RiLightbulbFlashLine },
+  { key: "flashcards", label: "Generate AI Flashcards", icon: RiSdCardLine, topicHint: "Flashcards: " },
+  { key: "homework", label: "Homework Helper", icon: RiQuestionAnswerLine, topicHint: "Homework help: " },
+  { key: "plan", label: "Create Study Plan", icon: RiCalendarScheduleLine, topicHint: "Study plan: " },
+  { key: "understand", label: "Understand a Topic", icon: RiLightbulbFlashLine, topicHint: "" },
 ];
 
 function weekDays(): { label: string; isToday: boolean }[] {
@@ -32,12 +36,32 @@ function weekDays(): { label: string; isToday: boolean }[] {
 }
 
 export default function DashboardPage() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
+  const brainiac = useBrainiac();
   const [prompt, setPrompt] = useState("");
+  const [recentPacks, setRecentPacks] = useState<(StudyPack & { id: string })[]>([]);
+  const greetedRef = useRef(false);
 
   const xpIntoLevel = (profile?.xp ?? 0) % XP_PER_LEVEL;
   const xpProgress = (xpIntoLevel / XP_PER_LEVEL) * 100;
+
+  useEffect(() => {
+    if (greetedRef.current || !profile) return;
+    greetedRef.current = true;
+    brainiac.show("greeting", `Welcome back, ${profile.displayName}!`);
+  }, [profile, brainiac]);
+
+  useEffect(() => {
+    if (!user) return;
+    return subscribeToCollection<StudyPack>(
+      "studyPacks",
+      setRecentPacks,
+      where("ownerId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(5),
+    );
+  }, [user]);
 
   function goToUpload(topic?: string) {
     const params = new URLSearchParams();
@@ -89,10 +113,10 @@ export default function DashboardPage() {
       <div>
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">Quick actions</h2>
         <div className="grid grid-cols-2 gap-3">
-          {QUICK_ACTIONS.map(({ key, label, icon: Icon }) => (
+          {QUICK_ACTIONS.map(({ key, label, icon: Icon, topicHint }) => (
             <Card
               key={key}
-              onClick={() => goToUpload()}
+              onClick={() => goToUpload(topicHint || undefined)}
               className="flex cursor-pointer flex-col items-start gap-3 p-4 transition-colors hover:border-primary"
             >
               <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -102,6 +126,20 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Recent study packs</h2>
+          <Link href="/packs" className="text-sm font-medium text-primary">
+            View all
+          </Link>
+        </div>
+        <StudyPackList
+          packs={recentPacks}
+          onEmptyAction={() => goToUpload()}
+          emptyLabel="Generate your first one"
+        />
       </div>
 
       <form onSubmit={handlePromptSubmit} className="flex items-center gap-2">
