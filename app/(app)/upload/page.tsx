@@ -6,8 +6,9 @@ import { RiImageLine, RiFileTextLine, RiStickyNoteLine, RiLinkM, RiSparkling2Lin
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { SpeechInput } from "@/components/ui/speech-input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SpeechTextarea } from "@/components/ui/speech-textarea";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth-provider";
 import { addDocument, timestamp } from "@/lib/firestore";
@@ -54,6 +55,8 @@ function UploadContent() {
           topic: topic.trim(),
           sourceType: source,
           learningStyle: profile?.learningStyle ?? null,
+          readingLevel: profile?.sensoryProfile?.readingLevel ?? "full_academic",
+          interestProfile: profile?.interestProfile,
           notes: source === "notes" ? content : undefined,
           link: source === "link" ? content : undefined,
           fileUrl: needsFile ? file?.url : undefined,
@@ -122,11 +125,11 @@ function UploadContent() {
         <TabsContent value="notes">
           <div className="flex flex-col gap-2">
             <Label htmlFor="notes">Paste your notes</Label>
-            <Textarea
+            <SpeechTextarea
               id="notes"
               rows={6}
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onValueChange={setContent}
               placeholder="Paste any notes, text, or material here..."
             />
           </div>
@@ -134,11 +137,11 @@ function UploadContent() {
         <TabsContent value="link">
           <div className="flex flex-col gap-2">
             <Label htmlFor="link">Paste a link</Label>
-            <Input
+            <SpeechInput
               id="link"
               type="url"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onValueChange={setContent}
               placeholder="https://..."
             />
             <p className="text-xs text-muted-foreground">
@@ -150,10 +153,10 @@ function UploadContent() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="topic">Topic name</Label>
-        <Input
+        <SpeechInput
           id="topic"
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onValueChange={setTopic}
           placeholder="e.g. Cellular Respiration"
         />
       </div>

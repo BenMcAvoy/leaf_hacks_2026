@@ -8,8 +8,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { getDocument } from "@/lib/firestore";
 import { useActivePack } from "@/components/providers/active-pack-provider";
+import { ReadAloudButton } from "@/components/ui/read-aloud-button";
 import type { StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useNeuroStore } from "@/lib/store/neuro-store";
+import { globalMicroPacingEngine } from "@/lib/services/micro-pacing-engine";
+import { toast } from "sonner";
 
 export default function StudyPackPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +23,8 @@ export default function StudyPackPage() {
   const [flipped, setFlipped] = useState(false);
   const { setActivePackId } = useActivePack();
 
+  const neuroProfile = useNeuroStore((state) => state.profile);
+
   useEffect(() => {
     getDocument<StudyPack>("studyPacks", id).then(setPack);
   }, [id]);
@@ -26,6 +32,27 @@ export default function StudyPackPage() {
   useEffect(() => {
     setActivePackId(id);
   }, [id, setActivePackId]);
+
+  useEffect(() => {
+    // Start pacing tracker
+    globalMicroPacingEngine.startTracking(() => {
+      toast("You've been studying for a while! Consider taking a short micro-break.", { icon: "🧠" });
+    }, neuroProfile.cognitiveLoadLimit);
+    
+    // Listen for rewards
+    const unsub = globalMicroPacingEngine.onReward((type, sound, animate) => {
+      if (type === "micro_quest_complete") {
+        toast.success("Deck completed! Great focus.", {
+          description: animate ? "🌟 +10 XP" : "Well done.",
+        });
+      }
+    });
+
+    return () => {
+      globalMicroPacingEngine.stopTracking();
+      unsub();
+    };
+  }, [neuroProfile.cognitiveLoadLimit]);
 
   if (!pack) {
     return <div className="p-6 text-sm text-muted-foreground">Loading study pack...</div>;
@@ -46,8 +73,11 @@ export default function StudyPackPage() {
         </TabsList>
 
         <TabsContent value="overview" className="flex flex-col gap-4">
-          <Card className="p-4">
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">Simplified explanation</h2>
+          <Card className="p-4 relative">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Simplified explanation</h2>
+              <ReadAloudButton text={pack.overview} className="-mt-1 -mr-1" />
+            </div>
             <p className="text-sm leading-relaxed">{pack.overview}</p>
           </Card>
           <Card className="p-4">
@@ -78,9 +108,15 @@ export default function StudyPackPage() {
           </p>
           <Card
             onClick={() => setFlipped((f) => !f)}
-            className="flex h-56 w-full max-w-sm cursor-pointer items-center justify-center p-6 text-center"
+            className="flex h-56 w-full max-w-sm cursor-pointer items-center justify-center p-6 text-center relative group"
           >
-            <p className="text-base font-medium">{flipped ? card.back : card.front}</p>
+            <p className="text-base font-medium">{flipped ? card.content.back : card.content.front}</p>
+            <div 
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ReadAloudButton text={flipped ? card.content.back : card.content.front} />
+            </div>
           </Card>
           <div className="flex items-center gap-3">
             <Button
@@ -103,7 +139,11 @@ export default function StudyPackPage() {
               disabled={cardIndex === pack.flashcards.length - 1}
               onClick={() => {
                 setFlipped(false);
-                setCardIndex((i) => Math.min(pack.flashcards.length - 1, i + 1));
+                if (cardIndex === pack.flashcards.length - 1) {
+                   globalMicroPacingEngine.triggerReward("micro_quest_complete", neuroProfile.visualStimulation);
+                } else {
+                   setCardIndex((i) => Math.min(pack.flashcards.length - 1, i + 1));
+                }
               }}
             >
               Next

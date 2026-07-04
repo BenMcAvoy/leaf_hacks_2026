@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged, loginWithEmail, registerWithEmail, signOut } from "@/lib/auth";
 import { getDocument, setDocument, updateDocument, subscribeToDocument } from "@/lib/firestore";
-import { defaultAccessibilitySettings, type UserProfile } from "@/lib/types";
+import { defaultAccessibilitySettings, type UserProfile, defaultSensoryAndCognitiveProfile, defaultInterestProfile } from "@/lib/types";
+import { useNeuroStore } from "@/lib/store/neuro-store";
 
 interface AuthContextValue {
   user: User | null;
@@ -26,6 +27,8 @@ function newProfile(uid: string, email: string): UserProfile {
     onboardingComplete: false,
     learningStyle: null,
     accessibility: defaultAccessibilitySettings,
+    sensoryProfile: defaultSensoryAndCognitiveProfile,
+    interestProfile: defaultInterestProfile,
     xp: 0,
     level: 1,
     streakCount: 0,
@@ -61,6 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const unsubDoc = subscribeToDocument<UserProfile>("users", user.uid, (data) => {
       setProfile(data);
+      if (data?.sensoryProfile) {
+        useNeuroStore.getState().updateProfile(data.sensoryProfile);
+      }
+      if (data?.interestProfile) {
+        useNeuroStore.getState().updateInterestProfile(data.interestProfile);
+      }
       setLoading(false);
     });
     return unsubDoc;
