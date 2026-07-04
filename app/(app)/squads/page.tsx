@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RiTeamLine, RiTrophyLine, RiUserLine } from "@remixicon/react";
+import { RiAddLine, RiTeamLine, RiTrophyLine, RiUserLine, RiVipCrownFill } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ export default function SquadsPage() {
   const [squads, setSquads] = useState<(Squad & { id: string })[]>([]);
   const [leaders, setLeaders] = useState<(UserProfile & { id: string })[]>([]);
   const [newSquadName, setNewSquadName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     return subscribeToCollection<Squad>("squads", setSquads, orderBy("totalXp", "desc"), limit(20));
@@ -43,6 +44,7 @@ export default function SquadsPage() {
     });
     await updateProfile({ squadId: id });
     setNewSquadName("");
+    setCreating(false);
   }
 
   async function joinSquad(squad: Squad & { id: string }) {
@@ -98,17 +100,48 @@ export default function SquadsPage() {
           {leaders.map((leader, i) => (
             <Card key={leader.id} className="flex items-center justify-between p-3">
               <div className="flex items-center gap-3">
-                <Badge variant={i < 3 ? "default" : "secondary"}>{i + 1}</Badge>
+                {i === 0 ? (
+                  <RiVipCrownFill className="size-5 text-yellow-400" aria-label="1st place" />
+                ) : i === 1 ? (
+                  <RiVipCrownFill className="size-5 text-slate-400" aria-label="2nd place" />
+                ) : i === 2 ? (
+                  <RiVipCrownFill className="size-5 text-amber-600" aria-label="3rd place" />
+                ) : (
+                  <Badge variant="secondary">{i + 1}</Badge>
+                )}
                 <span className="text-sm font-medium">{leader.displayName}</span>
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <RiTrophyLine className="size-4" /> {leader.xp} XP
+                <RiTrophyLine className="size-4" aria-hidden /> {leader.xp} XP
               </div>
             </Card>
           ))}
         </TabsContent>
 
         <TabsContent value="squads" className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{squads.length} squad{squads.length !== 1 ? "s" : ""}</span>
+            <Button size="sm" variant="outline" onClick={() => setCreating((v) => !v)}>
+              <RiAddLine className="size-4" aria-hidden /> New squad
+            </Button>
+          </div>
+          {creating && (
+            <Card className="flex flex-col gap-3 p-4">
+              <p className="text-sm font-medium">Create a new squad</p>
+              <div className="flex gap-2">
+                <Input
+                  value={newSquadName}
+                  onChange={(e) => setNewSquadName(e.target.value)}
+                  placeholder="Squad name"
+                  onKeyDown={(e) => { if (e.key === "Enter") createSquad(); }}
+                  autoFocus
+                />
+                <Button onClick={createSquad} disabled={!newSquadName.trim()}>
+                  Create
+                </Button>
+              </div>
+            </Card>
+          )}
           {squads.map((squad, i) => (
             <Card key={squad.id} className="flex items-center justify-between p-3">
               <div className="flex items-center gap-3">

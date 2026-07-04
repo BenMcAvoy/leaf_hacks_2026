@@ -25,10 +25,12 @@ const QUICK_ACTIONS = [
   { key: "understand", label: "Understand a Topic", icon: RiLightbulbFlashLine },
 ];
 
-function weekDays(): { label: string; isToday: boolean }[] {
-  const labels = ["S", "M", "T", "W", "T", "F", "S"];
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_ABBR = ["S", "M", "T", "W", "T", "F", "S"];
+
+function weekDays(): { label: string; fullName: string; isToday: boolean }[] {
   const today = new Date().getDay();
-  return labels.map((label, i) => ({ label, isToday: i === today }));
+  return DAY_ABBR.map((label, i) => ({ label, fullName: DAY_NAMES[i], isToday: i === today }));
 }
 
 export default function DashboardPage() {
@@ -60,7 +62,7 @@ export default function DashboardPage() {
             <h1 className="text-xl font-semibold">{profile?.displayName}</h1>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
-            <RiFireFill className="size-4" />
+            <RiFireFill className="size-4" aria-hidden />
             {profile?.streakCount ?? 0} day streak
           </div>
         </div>
@@ -71,16 +73,19 @@ export default function DashboardPage() {
           </div>
           <Progress value={xpProgress} className="h-2 bg-white/20" />
         </div>
-        <div className="flex justify-between pt-1">
+        <div className="flex justify-between pt-1" role="list" aria-label="Days of the week">
           {weekDays().map((day, i) => (
             <div
               key={i}
+              role="listitem"
+              aria-label={day.isToday ? `${day.fullName}, today` : day.fullName}
+              aria-current={day.isToday ? "date" : undefined}
               className={cn(
                 "flex size-8 items-center justify-center rounded-full text-xs font-medium",
                 day.isToday ? "bg-white text-primary" : "bg-white/15",
               )}
             >
-              {day.label}
+              <span aria-hidden="true">{day.label}</span>
             </div>
           ))}
         </div>
@@ -92,11 +97,14 @@ export default function DashboardPage() {
           {QUICK_ACTIONS.map(({ key, label, icon: Icon }) => (
             <Card
               key={key}
+              role="button"
+              tabIndex={0}
               onClick={() => goToUpload()}
-              className="flex cursor-pointer flex-col items-start gap-3 p-4 transition-colors hover:border-primary"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToUpload(); } }}
+              className="flex cursor-pointer flex-col items-start gap-3 p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
             >
               <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Icon className="size-5" />
+                <Icon className="size-5" aria-hidden />
               </div>
               <span className="text-sm font-medium">{label}</span>
             </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RiSparkling2Line, RiCloseLine, RiSendPlaneLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,16 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: "Hi! Ask me about anything you're studying." },
   ]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+    } else {
+      toggleRef.current?.focus();
+    }
+  }, [open]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -46,17 +56,28 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
   return (
     <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end gap-3 sm:bottom-6">
       {open && (
-        <Card className="flex h-96 w-80 flex-col gap-0 overflow-hidden p-0 shadow-2xl">
+        <Card
+          role="dialog"
+          aria-label="Study assistant"
+          aria-modal="true"
+          className="flex h-96 w-80 flex-col gap-0 overflow-hidden p-0 shadow-2xl"
+        >
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <RiSparkling2Line className="size-4 text-primary" />
+              <RiSparkling2Line className="size-4 text-primary" aria-hidden />
               Study Assistant
             </div>
             <button onClick={() => setOpen(false)} aria-label="Close chat">
-              <RiCloseLine className="size-4" />
+              <RiCloseLine className="size-4" aria-hidden />
             </button>
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto p-4 text-sm">
+          <div
+            role="log"
+            aria-live="polite"
+            aria-atomic="false"
+            aria-label="Chat messages"
+            className="flex-1 space-y-3 overflow-y-auto p-4 text-sm"
+          >
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -77,25 +98,29 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
           </div>
           <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
             <Input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask anything..."
               aria-label="Message the study assistant"
               disabled={sending}
             />
-            <Button type="submit" size="icon" aria-label="Send" disabled={sending}>
-              <RiSendPlaneLine className="size-4" />
+            <Button type="submit" size="icon" aria-label="Send message" disabled={sending}>
+              <RiSendPlaneLine className="size-4" aria-hidden />
             </Button>
           </form>
         </Card>
       )}
       <Button
+        ref={toggleRef}
         size="icon"
         className="size-14 rounded-full shadow-xl"
         onClick={() => setOpen((v) => !v)}
         aria-label="Toggle study assistant chat"
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
-        <RiSparkling2Line className="size-6" />
+        <RiSparkling2Line className="size-6" aria-hidden />
       </Button>
     </div>
   );

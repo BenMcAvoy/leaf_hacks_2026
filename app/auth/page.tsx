@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RiLeafLine } from "@remixicon/react";
+import { LeafLogo } from "@/components/leaf-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,8 +49,8 @@ export default function AuthPage() {
     <div className="flex min-h-svh items-center justify-center bg-gradient-to-b from-background to-muted p-6">
       <Card className="w-full max-w-sm border-none shadow-xl">
         <CardHeader className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <RiLeafLine className="size-6" />
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground [--logo-vein:var(--primary)]">
+            <LeafLogo className="size-7" />
           </div>
           <h1 className="text-xl font-semibold">
             {mode === "login" ? "Welcome back" : "Create your account"}
