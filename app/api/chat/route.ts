@@ -25,26 +25,29 @@ export async function POST(req: Request) {
   try {
     const profile = await getDocument<UserProfile>("users", body.userId);
 
-    let packs: StudyPack[] = [];
+    const recentPacks = await getCollection<StudyPack>(
+      "studyPacks",
+      where("ownerId", "==", body.userId),
+      orderBy("createdAt", "desc"),
+      limit(20),
+    );
+
+    let activePack: StudyPack | null = null;
     if (body.activePackId) {
-      const activePack = await getDocument<StudyPack>("studyPacks", body.activePackId);
-      if (activePack && activePack.ownerId === body.userId) {
-        packs = [activePack];
-      }
+      const found = await getDocument<StudyPack>("studyPacks", body.activePackId);
+      if (found && found.ownerId === body.userId) activePack = found;
     }
-    if (packs.length === 0) {
-      packs = await getCollection<StudyPack>(
-        "studyPacks",
-        where("ownerId", "==", body.userId),
-        orderBy("createdAt", "desc"),
-        limit(3),
-      );
-    }
+
+    const packs =
+      activePack && !recentPacks.some((pack) => pack.id === activePack!.id)
+        ? [activePack, ...recentPacks]
+        : recentPacks;
 
     const reply = await chatReply({
       message: body.message,
       learningStyle: profile?.learningStyle ?? null,
       packs,
+      activePackId: activePack?.id ?? null,
       history: body.history ?? [],
     });
     return NextResponse.json({ reply });
