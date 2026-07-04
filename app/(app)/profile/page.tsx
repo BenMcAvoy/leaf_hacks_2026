@@ -26,7 +26,15 @@ import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import { MotionItem, MotionPage, MotionPress, MotionStagger } from "@/components/motion-primitives";
-import { LEARNING_STYLE_META, type LearningStyle, type UserProfile, defaultSensoryAndCognitiveProfile, defaultInterestProfile } from "@/lib/types";
+import {
+  LEARNING_STYLE_META,
+  type LearningStyle,
+  type UserProfile,
+  type SensoryAndCognitiveProfile,
+  type InterestProfile,
+  defaultSensoryAndCognitiveProfile,
+  defaultInterestProfile,
+} from "@/lib/types";
 import { toast } from "sonner";
 
 type Experience = UserProfile["experience"][number];
@@ -378,12 +386,13 @@ function ProfileForm({
           <Label>Reading Level</Label>
           <Select
             value={form.sensoryProfile?.readingLevel ?? "full_academic"}
-            onValueChange={(v: any) =>
-              setForm({ 
-                ...form, 
-                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), readingLevel: v } 
-              })
-            }
+            onValueChange={(v: SensoryAndCognitiveProfile["readingLevel"] | null) => {
+              if (!v) return;
+              setForm({
+                ...form,
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), readingLevel: v }
+              });
+            }}
           >
             <SelectTrigger>
               <SelectValue />
@@ -400,12 +409,13 @@ function ProfileForm({
           <Label>Visual Stimulation</Label>
           <Select
             value={form.sensoryProfile?.visualStimulation ?? "standard"}
-            onValueChange={(v: any) =>
-              setForm({ 
-                ...form, 
-                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), visualStimulation: v } 
-              })
-            }
+            onValueChange={(v: SensoryAndCognitiveProfile["visualStimulation"] | null) => {
+              if (!v) return;
+              setForm({
+                ...form,
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), visualStimulation: v }
+              });
+            }}
           >
             <SelectTrigger>
               <SelectValue />
@@ -551,7 +561,7 @@ function ProfileForm({
               <Label>Intensity Scale</Label>
               <Tabs
                 value={form.interestProfile?.intensityScale ?? "subtle"}
-                onValueChange={(v: any) =>
+                onValueChange={(v: InterestProfile["intensityScale"]) =>
                   setForm({
                     ...form,
                     interestProfile: { ...(form.interestProfile || defaultInterestProfile), intensityScale: v }

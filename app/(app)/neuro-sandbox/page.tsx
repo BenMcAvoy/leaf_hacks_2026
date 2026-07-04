@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNeuroStore } from "@/lib/store/neuro-store";
+import type { SensoryAndCognitiveProfile } from "@/lib/types";
 import { globalMicroPacingEngine, RewardType } from "@/lib/services/micro-pacing-engine";
 import { parseTextAction } from "./actions";
 
@@ -51,7 +52,7 @@ export default function NeuroSandboxPage() {
         <div className="flex gap-4">
           <select 
             value={profile.readingLevel} 
-            onChange={(e) => setReadingLevel(e.target.value as any)}
+            onChange={(e) => setReadingLevel(e.target.value as SensoryAndCognitiveProfile["readingLevel"])}
             className="border p-1"
           >
             <option value="full_academic">Full Academic</option>
@@ -61,7 +62,7 @@ export default function NeuroSandboxPage() {
           
           <select 
             value={profile.visualStimulation} 
-            onChange={(e) => setVisualStimulation(e.target.value as any)}
+            onChange={(e) => setVisualStimulation(e.target.value as SensoryAndCognitiveProfile["visualStimulation"])}
             className="border p-1"
           >
             <option value="high">High Stimulation</option>

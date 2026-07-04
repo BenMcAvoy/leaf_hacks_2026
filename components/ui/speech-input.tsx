@@ -15,7 +15,7 @@ export interface SpeechInputProps
 const SpeechInput = React.forwardRef<HTMLInputElement, SpeechInputProps>(
   ({ className, value, onValueChange, onChange, ...props }, ref) => {
     const internalRef = React.useRef<HTMLInputElement>(null);
-    const resolvedRef = (ref as any) || internalRef;
+    const resolvedRef = (ref as React.RefObject<HTMLInputElement>) || internalRef;
     
     const { isListening, supported, startListening, stopListening } = useSpeechToText((text) => {
       const currentValue = resolvedRef.current?.value || "";
@@ -63,7 +63,11 @@ const SpeechInput = React.forwardRef<HTMLInputElement, SpeechInputProps>(
             )}
             onClick={(e) => {
               e.preventDefault();
-              isListening ? stopListening() : startListening();
+              if (isListening) {
+                stopListening();
+              } else {
+                startListening();
+              }
             }}
             title={isListening ? "Stop listening" : "Start dictation"}
           >

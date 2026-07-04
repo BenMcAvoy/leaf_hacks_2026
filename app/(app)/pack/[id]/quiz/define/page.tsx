@@ -84,7 +84,7 @@ export default function DefineQuizPage() {
       const res = await fetch("/api/quiz/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: card.back }),
+        body: JSON.stringify({ text: card.content.back }),
       });
       if (!res.ok) throw new Error("TTS request failed");
       const { audioBase64, mimeType } = (await res.json()) as { audioBase64: string; mimeType: string };
@@ -149,8 +149,8 @@ export default function DefineQuizPage() {
     setPhase("grading");
 
     const body = hasAudio
-      ? { term: card.front, definition: card.back, answerAudio: recordedAudioRef.current }
-      : { term: card.front, definition: card.back, answerText: answerText.trim() };
+      ? { term: card.content.front, definition: card.content.back, answerAudio: recordedAudioRef.current }
+      : { term: card.content.front, definition: card.content.back, answerText: answerText.trim() };
 
     try {
       const res = await fetch("/api/quiz/grade-definition", {
@@ -227,7 +227,7 @@ export default function DefineQuizPage() {
           Definition
         </p>
         <Card className="p-4">
-          <p className="text-sm leading-relaxed">{card.back}</p>
+          <p className="text-sm leading-relaxed">{card.content.back}</p>
         </Card>
         {voiceEnabled && (
           <Button

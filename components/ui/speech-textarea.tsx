@@ -15,7 +15,7 @@ export interface SpeechTextareaProps
 const SpeechTextarea = React.forwardRef<HTMLTextAreaElement, SpeechTextareaProps>(
   ({ className, value, onValueChange, onChange, ...props }, ref) => {
     const internalRef = React.useRef<HTMLTextAreaElement>(null);
-    const resolvedRef = (ref as any) || internalRef;
+    const resolvedRef = (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
     
     const { isListening, supported, startListening, stopListening } = useSpeechToText((text) => {
       const currentValue = resolvedRef.current?.value || "";
@@ -63,7 +63,11 @@ const SpeechTextarea = React.forwardRef<HTMLTextAreaElement, SpeechTextareaProps
             )}
             onClick={(e) => {
               e.preventDefault();
-              isListening ? stopListening() : startListening();
+              if (isListening) {
+                stopListening();
+              } else {
+                startListening();
+              }
             }}
             title={isListening ? "Stop listening" : "Start dictation"}
           >

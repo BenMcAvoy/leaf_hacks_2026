@@ -1,20 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 
 export function useTextToSpeech() {
   const { profile } = useAuth();
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [supported, setSupported] = useState(true);
-  const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null);
+  const [supported] = useState(() => typeof window !== "undefined" && !!window.speechSynthesis);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) {
-      setSupported(false);
-      return;
-    }
+    if (!supported) return;
 
     const loadVoices = () => {
       setVoices(window.speechSynthesis.getVoices());
@@ -24,7 +21,7 @@ export function useTextToSpeech() {
     if (speechSynthesis.onvoiceschanged !== undefined) {
       speechSynthesis.onvoiceschanged = loadVoices;
     }
-  }, []);
+  }, [supported]);
 
   const speak = useCallback(
     (text: string) => {
@@ -46,7 +43,7 @@ export function useTextToSpeech() {
       utterance.onend = () => setIsPlaying(false);
       utterance.onerror = () => setIsPlaying(false);
 
-      setCurrentUtterance(utterance);
+      currentUtteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     },
     [supported, voices, profile]
@@ -56,7 +53,7 @@ export function useTextToSpeech() {
     if (supported && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       setIsPlaying(false);
-      setCurrentUtterance(null);
+      currentUtteranceRef.current = null;
     }
   }, [supported]);
 
