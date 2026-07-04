@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { AccessibilityControls } from "@/components/accessibility-controls";
 import { AppearanceControls } from "@/components/appearance-controls";
 import { LearningStyleSelector } from "@/components/learning-style-selector";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
@@ -297,6 +299,20 @@ function ProfileForm({
           value={form.accessibility}
           onChange={(accessibility) => setForm({ ...form, accessibility })}
         />
+
+        <h2 className="text-sm font-medium">Voice mode</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-sm">Definition quiz voice</Label>
+            <p className="text-xs text-muted-foreground">
+              Hear definitions read aloud and answer by speaking using Gemini AI.
+            </p>
+          </div>
+          <Switch
+            checked={form.voiceModeEnabled}
+            onCheckedChange={(v) => setForm({ ...form, voiceModeEnabled: v })}
+          />
+        </div>
       </Card>
 
       <Button onClick={save} disabled={saving} size="lg">

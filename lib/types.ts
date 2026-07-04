@@ -23,6 +23,7 @@ export interface UserProfile {
   onboardingComplete: boolean;
   learningStyle: LearningStyle | null;
   accessibility: AccessibilitySettings;
+  voiceModeEnabled: boolean;
   xp: number;
   level: number;
   streakCount: number;
