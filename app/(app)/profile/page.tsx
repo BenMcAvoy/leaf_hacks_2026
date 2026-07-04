@@ -1,18 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { RiAddLine, RiCloseLine, RiMedalLine } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { AccessibilityControls } from "@/components/accessibility-controls";
+import { AppearanceControls } from "@/components/appearance-controls";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
+import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
-import { LEARNING_STYLE_META, type LearningStyle, type UserProfile } from "@/lib/types";
+import { MotionItem, MotionPage, MotionPress, MotionStagger } from "@/components/motion-primitives";
+import {
+  LEARNING_STYLE_META,
+  type LearningStyle,
+  type UserProfile,
+  type SensoryAndCognitiveProfile,
+  type InterestProfile,
+  defaultSensoryAndCognitiveProfile,
+  defaultInterestProfile,
+} from "@/lib/types";
 import { toast } from "sonner";
 
 type Experience = UserProfile["experience"][number];
@@ -50,16 +72,21 @@ function ProfileForm({
 }) {
   const [form, setForm] = useState<UserProfile>(profile);
   const [skillInput, setSkillInput] = useState("");
+  const [analogyKeywordInput, setAnalogyKeywordInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const { voices } = useTextToSpeech();
+  const brainiac = useBrainiac();
 
   async function save() {
     if (!form) return;
     setSaving(true);
     try {
-      await updateProfile(form);
+      await updateProfile({ ...form, displayName: form.displayName.trim() || profile.displayName });
       toast.success("Profile saved");
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setSaving(false);
     }
@@ -89,9 +116,22 @@ function ProfileForm({
     setSkillInput("");
   }
 
+  function addAnalogyKeyword() {
+    if (!analogyKeywordInput.trim()) return;
+    setForm((f) => {
+      if (!f) return f;
+      const ip = f.interestProfile || defaultInterestProfile;
+      return { 
+        ...f, 
+        interestProfile: { ...ip, specificInterestKeywords: [...ip.specificInterestKeywords, analogyKeywordInput.trim()] } 
+      };
+    });
+    setAnalogyKeywordInput("");
+  }
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
-      <div>
+    <MotionPage className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+      <MotionItem>
         <h1 className="text-xl font-semibold">{form.displayName}</h1>
         <p className="text-sm text-muted-foreground">{form.email}</p>
         <div className="mt-3">
@@ -101,20 +141,33 @@ function ProfileForm({
           </div>
           <Progress value={completion(form)} className="h-2" />
         </div>
-      </div>
+      </MotionItem>
 
       {form.badges.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <MotionStagger className="flex flex-wrap gap-2">
           {form.badges.map((badge) => (
+            <MotionItem key={badge}>
             <Badge key={badge} variant="secondary" className="gap-1">
               <RiMedalLine className="size-3" /> {badge}
             </Badge>
+            </MotionItem>
           ))}
-        </div>
+        </MotionStagger>
       )}
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <h2 className="text-sm font-medium">Basic Information</h2>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            value={form.displayName}
+            onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+            placeholder="Your username"
+            maxLength={30}
+          />
+        </div>
         <Input
           value={form.basicInfo.headline}
           onChange={(e) => setForm({ ...form, basicInfo: { ...form.basicInfo, headline: e.target.value } })}
@@ -132,7 +185,9 @@ function ProfileForm({
           placeholder="Location"
         />
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Experience</h2>
@@ -172,7 +227,9 @@ function ProfileForm({
           </div>
         ))}
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Qualifications</h2>
@@ -212,7 +269,9 @@ function ProfileForm({
           </div>
         ))}
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Languages</h2>
@@ -243,11 +302,14 @@ function ProfileForm({
           </div>
         ))}
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-3 p-4">
         <h2 className="text-sm font-medium">Skills</h2>
-        <div className="flex flex-wrap gap-2">
+        <MotionStagger className="flex flex-wrap gap-2">
           {form.skills.map((skill, i) => (
+            <MotionItem key={`${skill}-${i}`}>
             <Badge key={i} variant="secondary" className="gap-1">
               {skill}
               <button
@@ -257,8 +319,9 @@ function ProfileForm({
                 <RiCloseLine className="size-3" />
               </button>
             </Badge>
+            </MotionItem>
           ))}
-        </div>
+        </MotionStagger>
         <div className="flex gap-2">
           <Input
             value={skillInput}
@@ -276,54 +339,251 @@ function ProfileForm({
           </Button>
         </div>
       </Card>
+      </MotionItem>
 
+      <MotionItem>
       <Card className="flex flex-col gap-4 p-4">
         <h2 className="text-sm font-medium">Learning style</h2>
         <div className="grid grid-cols-2 gap-2">
           {(Object.keys(LEARNING_STYLE_META) as LearningStyle[]).map((key) => (
-            <button
+            <motion.button
               key={key}
               onClick={() => setForm({ ...form, learningStyle: key })}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.985 }}
               className={`rounded-lg border p-3 text-left text-sm ${form.learningStyle === key ? "border-primary bg-primary/5" : ""}`}
             >
               {LEARNING_STYLE_META[key].label}
-            </button>
+            </motion.button>
           ))}
         </div>
 
+        <h2 className="text-sm font-medium">Appearance</h2>
+        <AppearanceControls />
+
         <h2 className="text-sm font-medium">Accessibility</h2>
-        <div className="flex items-center justify-between">
-          <Label>Reduce motion</Label>
+        <AccessibilityControls
+          value={form.accessibility}
+          onChange={(accessibility) => setForm({ ...form, accessibility })}
+        />
+
+        <h2 className="text-sm font-medium">Voice mode</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-sm">Definition quiz voice</Label>
+            <p className="text-xs text-muted-foreground">
+              Hear definitions read aloud and answer by speaking using Gemini AI.
+            </p>
+          </div>
           <Switch
-            checked={form.accessibility.reduceMotion}
-            onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, reduceMotion: v } })
+            checked={form.voiceModeEnabled}
+            onCheckedChange={(v) => setForm({ ...form, voiceModeEnabled: v })}
+          />
+        </div>
+
+        <h2 className="mt-4 text-sm font-medium">Sensory & Cognitive Profile</h2>
+        <div className="flex flex-col gap-2">
+          <Label>Reading Level</Label>
+          <Select
+            value={form.sensoryProfile?.readingLevel ?? "full_academic"}
+            onValueChange={(v: SensoryAndCognitiveProfile["readingLevel"] | null) => {
+              if (!v) return;
+              setForm({
+                ...form,
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), readingLevel: v }
+              });
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full_academic">Full Academic</SelectItem>
+              <SelectItem value="plain_language">Plain Language</SelectItem>
+              <SelectItem value="bulleted_synthesis">Bulleted Synthesis</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-2">
+          <Label>Visual Stimulation</Label>
+          <Select
+            value={form.sensoryProfile?.visualStimulation ?? "standard"}
+            onValueChange={(v: SensoryAndCognitiveProfile["visualStimulation"] | null) => {
+              if (!v) return;
+              setForm({
+                ...form,
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), visualStimulation: v }
+              });
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="standard">Standard</SelectItem>
+              <SelectItem value="low">Low (Dyslexia-friendly/Reduced Motion)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-2">
+          <Label>Cognitive Load Limit (Cards per session)</Label>
+          <Input 
+            type="number"
+            value={form.sensoryProfile?.cognitiveLoadLimit ?? 20}
+            onChange={(e) => 
+              setForm({ 
+                ...form, 
+                sensoryProfile: { ...(form.sensoryProfile || defaultSensoryAndCognitiveProfile), cognitiveLoadLimit: parseInt(e.target.value) || 20 } 
+              })
             }
           />
         </div>
+        
+        <h3 className="mt-4 text-sm font-medium">Read Aloud (Text-to-Speech)</h3>
         <div className="flex items-center justify-between">
-          <Label>Dyslexia-friendly font</Label>
+          <Label>Enable Read Aloud button</Label>
           <Switch
-            checked={form.accessibility.dyslexiaFont}
+            checked={form.accessibility.enableTTS}
             onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, dyslexiaFont: v } })
+              setForm({ ...form, accessibility: { ...form.accessibility, enableTTS: v } })
             }
           />
         </div>
-        <div className="flex items-center justify-between">
-          <Label>Low-stimulation colors</Label>
-          <Switch
-            checked={form.accessibility.lowStimulation}
-            onCheckedChange={(v) =>
-              setForm({ ...form, accessibility: { ...form.accessibility, lowStimulation: v } })
-            }
-          />
-        </div>
+        
+        {form.accessibility.enableTTS && (
+          <div className="flex flex-col gap-2">
+            <Label>Preferred Voice</Label>
+            <Select
+              value={form.accessibility.ttsVoiceUri || ""}
+              onValueChange={(v) =>
+                setForm({ ...form, accessibility: { ...form.accessibility, ttsVoiceUri: v || "" } })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a voice" />
+              </SelectTrigger>
+              <SelectContent>
+                {voices.length > 0 ? (
+                  voices.map((voice) => (
+                    <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name} ({voice.lang})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="default" disabled>
+                    Loading voices...
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </Card>
 
+      <Card className="flex flex-col gap-4 p-4">
+        <h2 className="text-sm font-medium">Hyper-Fixation Analogy Engine</h2>
+        <div className="flex items-center justify-between">
+          <Label aria-label="Enable Hyper-Fixation Analogy Engine">Enable Engine</Label>
+          <Switch
+            checked={form.interestProfile?.analogyEngineEnabled ?? false}
+            onCheckedChange={(v) =>
+              setForm({ 
+                ...form, 
+                interestProfile: { ...(form.interestProfile || defaultInterestProfile), analogyEngineEnabled: v } 
+              })
+            }
+          />
+        </div>
+
+        {(form.interestProfile?.analogyEngineEnabled) && (
+          <div className="flex flex-col gap-4 border-t pt-4">
+            <div className="flex flex-col gap-2">
+              <Label>Primary Interest Category</Label>
+              <Input
+                placeholder="e.g. Video Games, Anime, Sports..."
+                value={form.interestProfile?.primaryInterestCategory ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    interestProfile: { ...(form.interestProfile || defaultInterestProfile), primaryInterestCategory: e.target.value }
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Specific Interest Keywords</Label>
+              <div className="flex flex-wrap gap-2">
+                {(form.interestProfile?.specificInterestKeywords || []).map((keyword, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1">
+                    {keyword}
+                    <button
+                      onClick={() => {
+                        const ip = form.interestProfile || defaultInterestProfile;
+                        setForm({
+                          ...form,
+                          interestProfile: {
+                            ...ip,
+                            specificInterestKeywords: ip.specificInterestKeywords.filter((_, j) => j !== i)
+                          }
+                        });
+                      }}
+                      aria-label={`Remove ${keyword} tag`}
+                    >
+                      <RiCloseLine className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="analogyKeywordInput"
+                  value={analogyKeywordInput}
+                  onChange={(e) => setAnalogyKeywordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addAnalogyKeyword();
+                    }
+                  }}
+                  placeholder="e.g. Minecraft Redstone"
+                />
+                <Button variant="outline" onClick={addAnalogyKeyword}>
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Intensity Scale</Label>
+              <Tabs
+                value={form.interestProfile?.intensityScale ?? "subtle"}
+                onValueChange={(v: InterestProfile["intensityScale"]) =>
+                  setForm({
+                    ...form,
+                    interestProfile: { ...(form.interestProfile || defaultInterestProfile), intensityScale: v }
+                  })
+                }
+              >
+                <TabsList className="grid grid-cols-2">
+                  <TabsTrigger value="subtle">Subtle</TabsTrigger>
+                  <TabsTrigger value="immersive">Immersive</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+        )}
+      </Card>
+      </MotionItem>
+
+      <MotionPress>
       <Button onClick={save} disabled={saving} size="lg">
         {saving ? "Saving..." : "Save changes"}
       </Button>
-    </div>
+      </MotionPress>
+    </MotionPage>
   );
 }

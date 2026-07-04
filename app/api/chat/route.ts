@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { chatReply } from "@/lib/ai";
+import { chatReply, resolveChatNavRoute } from "@/lib/ai";
 import { getDocument, getCollection, where, orderBy, limit } from "@/lib/firestore";
 import type { UserProfile, StudyPack } from "@/lib/types";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 
 interface ChatRequestBody {
   userId: string;
-  message: string;
+  message?: string;
+  audio?: { dataUrl: string; contentType: string };
   activePackId?: string;
   history: { role: "user" | "assistant"; text: string }[];
 }
@@ -15,8 +16,10 @@ interface ChatRequestBody {
 export async function POST(req: Request) {
   const body = (await req.json()) as Partial<ChatRequestBody>;
 
-  if (!body.message?.trim()) {
-    return NextResponse.json({ error: "message is required" }, { status: 400 });
+  const hasMessage = Boolean(body.message?.trim());
+  const hasAudio = Boolean(body.audio?.dataUrl);
+  if (!hasMessage && !hasAudio) {
+    return NextResponse.json({ error: "message or audio is required" }, { status: 400 });
   }
   if (!body.userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -25,29 +28,41 @@ export async function POST(req: Request) {
   try {
     const profile = await getDocument<UserProfile>("users", body.userId);
 
-    let packs: StudyPack[] = [];
+    const recentPacks = await getCollection<StudyPack>(
+      "studyPacks",
+      where("ownerId", "==", body.userId),
+      orderBy("createdAt", "desc"),
+      limit(20),
+    );
+
+    let activePack: StudyPack | null = null;
     if (body.activePackId) {
-      const activePack = await getDocument<StudyPack>("studyPacks", body.activePackId);
-      if (activePack && activePack.ownerId === body.userId) {
-        packs = [activePack];
-      }
-    }
-    if (packs.length === 0) {
-      packs = await getCollection<StudyPack>(
-        "studyPacks",
-        where("ownerId", "==", body.userId),
-        orderBy("createdAt", "desc"),
-        limit(3),
-      );
+      const found = await getDocument<StudyPack>("studyPacks", body.activePackId);
+      if (found && found.ownerId === body.userId) activePack = found;
     }
 
-    const reply = await chatReply({
-      message: body.message,
+    const packs =
+      activePack && !recentPacks.some((pack) => pack.id === activePack!.id)
+        ? [activePack, ...recentPacks]
+        : recentPacks;
+
+    const { reply, navigateTo, packId, transcript } = await chatReply({
+      message: body.message ?? "",
       learningStyle: profile?.learningStyle ?? null,
+      readingLevel: profile?.sensoryProfile?.readingLevel ?? "full_academic",
+      interestProfile: profile?.interestProfile,
       packs,
+      activePackId: activePack?.id ?? null,
       history: body.history ?? [],
+      audio: body.audio ? { url: body.audio.dataUrl, contentType: body.audio.contentType } : undefined,
     });
-    return NextResponse.json({ reply });
+    const path = resolveChatNavRoute(
+      navigateTo,
+      activePack?.id ?? null,
+      packId ?? null,
+      packs.map((pack) => pack.id).filter((id): id is string => Boolean(id)),
+    );
+    return NextResponse.json({ reply, navigateTo: path, transcript });
   } catch (err) {
     console.error("Failed to get chat reply:", err);
     return NextResponse.json(

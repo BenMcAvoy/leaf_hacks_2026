@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged, loginWithEmail, registerWithEmail, signOut } from "@/lib/auth";
 import { getDocument, setDocument, updateDocument, subscribeToDocument } from "@/lib/firestore";
-import { defaultAccessibilitySettings, type UserProfile } from "@/lib/types";
+import { defaultAccessibilitySettings, type UserProfile, defaultSensoryAndCognitiveProfile, defaultInterestProfile } from "@/lib/types";
+import { useNeuroStore } from "@/lib/store/neuro-store";
 
 interface AuthContextValue {
   user: User | null;
@@ -18,6 +19,34 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const demoProfile: UserProfile = {
+  uid: "demo-alex",
+  email: "alex@studyflow.demo",
+  displayName: "Alex",
+  onboardingComplete: true,
+  learningStyle: "picturePath",
+  accessibility: defaultAccessibilitySettings,
+  sensoryProfile: defaultSensoryAndCognitiveProfile,
+  interestProfile: defaultInterestProfile,
+  voiceModeEnabled: false,
+  xp: 1620,
+  level: 4,
+  streakCount: 7,
+  streakFreezeAvailable: true,
+  lastActiveDate: null,
+  squadId: "sphere-physics-bros",
+  badges: ["First Steps", "Consistent", "Study Sphere Starter"],
+  basicInfo: {
+    headline: "A-Level Physics student",
+    bio: "Learning Newton's laws with short visual explanations and practice questions.",
+    location: "London",
+  },
+  experience: [{ title: "Study Sphere member", org: "Physics Bros", period: "This week" }],
+  qualifications: [{ name: "GCSE Science", issuer: "Mock profile", year: "2025" }],
+  languages: [{ name: "English", level: "Fluent" }],
+  skills: ["Physics", "Flashcards", "Exam practice"],
+};
+
 function newProfile(uid: string, email: string): UserProfile {
   return {
     uid,
@@ -26,6 +55,9 @@ function newProfile(uid: string, email: string): UserProfile {
     onboardingComplete: false,
     learningStyle: null,
     accessibility: defaultAccessibilitySettings,
+    sensoryProfile: defaultSensoryAndCognitiveProfile,
+    interestProfile: defaultInterestProfile,
+    voiceModeEnabled: false,
     xp: 0,
     level: 1,
     streakCount: 0,
@@ -50,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubAuth = onAuthStateChanged((firebaseUser) => {
       setUser(firebaseUser);
       if (!firebaseUser) {
-        setProfile(null);
+        setProfile(demoProfile);
         setLoading(false);
       }
     });
@@ -60,7 +92,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     const unsubDoc = subscribeToDocument<UserProfile>("users", user.uid, (data) => {
-      setProfile(data);
+      setProfile(
+        data ? { ...data, accessibility: { ...defaultAccessibilitySettings, ...data.accessibility } } : data,
+      );
+      if (data?.sensoryProfile) {
+        useNeuroStore.getState().updateProfile(data.sensoryProfile);
+      }
+      if (data?.interestProfile) {
+        useNeuroStore.getState().updateInterestProfile(data.interestProfile);
+      }
       setLoading(false);
     });
     return unsubDoc;
@@ -81,11 +121,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await signOut();
+    if (user) {
+      await signOut();
+    }
+    setUser(null);
+    setProfile(demoProfile);
   }
 
   async function updateProfile(data: Partial<UserProfile>) {
-    if (!user) return;
+    if (!user) {
+      setProfile((current) => (current ? { ...current, ...data } : current));
+      return;
+    }
     await updateDocument<UserProfile>("users", user.uid, data);
   }
 
