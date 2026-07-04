@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   RiSparkling2Line,
   RiCloseLine,
@@ -83,7 +84,7 @@ export function ChatBubble() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user?.uid,
+          userId: user?.uid ?? profile?.uid ?? "demo-alex",
           activePackId: activePackId ?? undefined,
           history,
           ...body,
@@ -190,125 +191,149 @@ export function ChatBubble() {
 
   return (
     <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end gap-3 sm:bottom-6">
-      {open && (
-        <Card
-          role="dialog"
-          aria-label="Study assistant"
-          aria-modal="true"
-          className="flex h-96 w-80 flex-col gap-0 overflow-hidden p-0 shadow-2xl"
-        >
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <RiSparkling2Line className="size-4 text-primary" aria-hidden />
-              Study Assistant
-            </div>
-            <button onClick={() => setOpen(false)} aria-label="Close chat">
-              <RiCloseLine className="size-4" aria-hidden />
-            </button>
-          </div>
-          <div
-            role="log"
-            aria-live="polite"
-            aria-atomic="false"
-            aria-label="Chat messages"
-            className="flex-1 space-y-3 overflow-y-auto p-4 text-sm"
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={
-                  m.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
-                    : "mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2"
-                }
-              >
-                {m.text}
-              </div>
-            ))}
-            {sending && (
-              <div className="mr-auto flex max-w-[85%] items-center gap-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-2.5">
-                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
-              </div>
-            )}
-          </div>
-          {recording ? (
-            <div className="flex items-center gap-3 border-t p-3">
-              <Button
-                type="button"
-                size="icon"
-                variant="destructive"
-                aria-label="Stop recording"
-                onClick={stopRecording}
-              >
-                <RiMicOffLine className="size-4" />
-              </Button>
-              <div className="flex flex-1 items-center gap-2">
-                <span className="relative flex size-2 shrink-0">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-destructive opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-destructive" />
-                </span>
-                <span className="text-xs text-muted-foreground">Listening...</span>
-                <div className="flex h-5 flex-1 items-end justify-center gap-0.5">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      ref={(el) => {
-                        barRefs.current[i] = el;
-                      }}
-                      className="h-full w-1 origin-bottom rounded-full bg-destructive/70 transition-transform duration-75"
-                      style={{ transform: "scaleY(0.15)" }}
-                    />
-                  ))}
+            <Card
+              role="dialog"
+              aria-label="Study assistant"
+              aria-modal="true"
+              className="flex h-96 w-80 flex-col gap-0 overflow-hidden p-0 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <RiSparkling2Line className="size-4 text-primary" aria-hidden />
+                  Study Assistant
                 </div>
-                <span className="text-xs tabular-nums text-muted-foreground">{formatElapsed(elapsedSeconds)}</span>
+                <button onClick={() => setOpen(false)} aria-label="Close chat">
+                  <RiCloseLine className="size-4" aria-hidden />
+                </button>
               </div>
-            </div>
-          ) : (
-            <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
-              {profile?.voiceModeEnabled && (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label="Record voice message"
-                  disabled={sending || transcribing}
-                  onClick={startRecording}
-                >
-                  {transcribing ? (
-                    <RiLoader4Line className="size-4 animate-spin" />
-                  ) : (
-                    <RiMicLine className="size-4" />
+              <div
+                role="log"
+                aria-live="polite"
+                aria-atomic="false"
+                aria-label="Chat messages"
+                className="flex-1 space-y-3 overflow-y-auto p-4 text-sm"
+              >
+                {messages.map((m, i) => (
+                  <motion.div
+                    key={`${m.role}-${i}-${m.text}`}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.16 }}
+                    className={
+                      m.role === "user"
+                        ? "ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
+                        : "mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2"
+                    }
+                  >
+                    {m.text}
+                  </motion.div>
+                ))}
+                {sending && (
+                  <div className="mr-auto flex max-w-[85%] items-center gap-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-2.5">
+                    {[0, 1, 2].map((dot) => (
+                      <motion.span
+                        key={dot}
+                        className="size-1.5 rounded-full bg-muted-foreground/60"
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{
+                          duration: 0.7,
+                          repeat: Infinity,
+                          delay: dot * 0.12,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              {recording ? (
+                <div className="flex items-center gap-3 border-t p-3">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    aria-label="Stop recording"
+                    onClick={stopRecording}
+                  >
+                    <RiMicOffLine className="size-4" />
+                  </Button>
+                  <div className="flex flex-1 items-center gap-2">
+                    <span className="relative flex size-2 shrink-0">
+                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-destructive opacity-75" />
+                      <span className="relative inline-flex size-2 rounded-full bg-destructive" />
+                    </span>
+                    <span className="text-xs text-muted-foreground">Listening...</span>
+                    <div className="flex h-5 flex-1 items-end justify-center gap-0.5">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          ref={(el) => {
+                            barRefs.current[i] = el;
+                          }}
+                          className="h-full w-1 origin-bottom rounded-full bg-destructive/70 transition-transform duration-75"
+                          style={{ transform: "scaleY(0.15)" }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs tabular-nums text-muted-foreground">{formatElapsed(elapsedSeconds)}</span>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
+                  {profile?.voiceModeEnabled && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      aria-label="Record voice message"
+                      disabled={sending || transcribing}
+                      onClick={startRecording}
+                    >
+                      {transcribing ? (
+                        <RiLoader4Line className="size-4 animate-spin" />
+                      ) : (
+                        <RiMicLine className="size-4" />
+                      )}
+                    </Button>
                   )}
-                </Button>
+                  <Input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Ask anything..."
+                    aria-label="Message the study assistant"
+                    disabled={sending || transcribing}
+                  />
+                  <Button type="submit" size="icon" aria-label="Send message" disabled={sending || transcribing}>
+                    <RiSendPlaneLine className="size-4" aria-hidden />
+                  </Button>
+                </form>
               )}
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask anything..."
-                aria-label="Message the study assistant"
-                disabled={sending || transcribing}
-              />
-              <Button type="submit" size="icon" aria-label="Send message" disabled={sending || transcribing}>
-                <RiSendPlaneLine className="size-4" aria-hidden />
-              </Button>
-            </form>
-          )}
-        </Card>
-      )}
-      <Button
-        ref={toggleRef}
-        size="icon"
-        className="size-14 rounded-full shadow-xl"
-        onClick={toggleOpen}
-        aria-label="Toggle study assistant chat"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-      >
-        <RiSparkling2Line className="size-6" aria-hidden />
-      </Button>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+        <Button
+          ref={toggleRef}
+          size="icon"
+          className="size-14 rounded-full shadow-xl"
+          onClick={toggleOpen}
+          aria-label="Toggle study assistant chat"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <RiSparkling2Line className="size-6" aria-hidden />
+        </Button>
+      </motion.div>
     </div>
   );
 }

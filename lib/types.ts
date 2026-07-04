@@ -1,4 +1,10 @@
-export type LearningStyle = "focusFlow" | "picturePath" | "clearRead" | "simpleSpeak";
+export type LearningStyle =
+  | "focusFlow"
+  | "picturePath"
+  | "clearRead"
+  | "examEdge"
+  | "simpleSpeak"
+  | "hintFirst";
 
 export interface SensoryAndCognitiveProfile {
   uiComplexityLevel: "minimal" | "standard" | "rich";
@@ -150,10 +156,20 @@ export const LEARNING_STYLE_META: Record<
     tagline: "Clean layouts, high contrast",
     description: "Larger line-height, high-contrast text, and precise, low-fluff writing.",
   },
+  examEdge: {
+    label: "Exam Edge",
+    tagline: "Practice questions, mark schemes",
+    description: "Study packs focus on exam-style wording, common traps, and quick practice.",
+  },
   simpleSpeak: {
     label: "Simple Speak",
     tagline: "Plain English, no jargon",
     description: "Short words, short sentences, and inline definitions for any technical term.",
+  },
+  hintFirst: {
+    label: "Hint First",
+    tagline: "Clues before full answers",
+    description: "Feedback starts with a nudge, then reveals the full explanation when needed.",
   },
 };
 
@@ -166,7 +182,7 @@ export function levelFromXp(xp: number): number {
 export const BADGE_UNLOCKS: { level: number; badge: string; perk: string }[] = [
   { level: 2, badge: "First Steps", perk: "Custom avatar color" },
   { level: 3, badge: "Consistent", perk: "Extra streak freeze token" },
-  { level: 5, badge: "Squad Leader", perk: "Squad customization unlocked" },
+  { level: 5, badge: "Sphere Leader", perk: "Study Sphere customization unlocked" },
   { level: 8, badge: "Sharp Mind", perk: "Priority AI response styling" },
   { level: 12, badge: "Scholar", perk: "Exclusive profile frame" },
 ];

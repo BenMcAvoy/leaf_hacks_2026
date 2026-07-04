@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { RiAddLine, RiLightbulbFlashLine, RiCheckboxCircleLine, RiArrowLeftRightLine } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -11,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { getDocument, updateDocument } from "@/lib/firestore";
 import { useActivePack } from "@/components/providers/active-pack-provider";
 import { ReadAloudButton } from "@/components/ui/read-aloud-button";
+import { MotionItem, MotionPage, MotionPress, MotionStagger } from "@/components/motion-primitives";
+import { MOCK_STUDY_PACK } from "@/lib/mock-data";
 import type { StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useNeuroStore } from "@/lib/store/neuro-store";
@@ -33,7 +36,17 @@ export default function StudyPackPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    getDocument<StudyPack>("studyPacks", id).then(setPack);
+    async function loadPack() {
+      if (id === "demo-newtons-laws") {
+        const stored = window.sessionStorage.getItem("study-flow-demo-pack");
+        setPack(stored ? (JSON.parse(stored) as StudyPack) : MOCK_STUDY_PACK);
+        return;
+      }
+      const data = await getDocument<StudyPack>("studyPacks", id);
+      setPack(data ?? MOCK_STUDY_PACK);
+    }
+
+    void loadPack();
   }, [id]);
 
   useEffect(() => {
@@ -89,9 +102,12 @@ export default function StudyPackPage() {
   const card = pack.flashcards[cardIndex];
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">{pack.topic}</h1>
+    <MotionPage className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
+      <MotionItem>
+        <h1 className="text-xl font-semibold">{pack.topic}</h1>
+      </MotionItem>
 
+      <MotionItem>
       <Tabs defaultValue="overview">
         <TabsList className="grid grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -101,39 +117,52 @@ export default function StudyPackPage() {
         </TabsList>
 
         <TabsContent value="overview" className="flex flex-col gap-4">
-          <Card className="p-4 relative">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-medium text-muted-foreground">Simplified explanation</h2>
-              <ReadAloudButton text={pack.overview} className="-mt-1 -mr-1" />
+          <MotionStagger className="flex flex-col gap-4">
+          <MotionItem>
+          <Card className="relative gap-4 p-4">
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">Simplified explanation</h2>
+                <ReadAloudButton text={pack.overview} className="-mt-1 -mr-1" />
+              </div>
+              <p className="text-sm leading-relaxed">{pack.overview}</p>
             </div>
-            <p className="text-sm leading-relaxed">{pack.overview}</p>
+            <div className="rounded-2xl bg-primary/10 p-3">
+              <h3 className="mb-1 flex items-center gap-1 text-xs font-medium text-primary">
+                <RiLightbulbFlashLine className="size-4" /> Picture Path analogy
+              </h3>
+              <p className="text-sm">{pack.analogies[0]}</p>
+            </div>
+            <div>
+              <h3 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                <RiCheckboxCircleLine className="size-4" /> Key points
+              </h3>
+              <ul className="grid gap-2 text-sm">
+                {pack.keyPoints.slice(0, 4).map((point) => (
+                  <li key={point} className="rounded-xl bg-muted px-3 py-2">
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </Card>
-          <Card className="p-4">
-            <h2 className="mb-2 flex items-center gap-1 text-sm font-medium text-muted-foreground">
-              <RiLightbulbFlashLine className="size-4" aria-hidden /> Key analogies
-            </h2>
-            <ul className="list-disc space-y-1 pl-5 text-sm">
-              {pack.analogies.map((a, i) => (
-                <li key={i}>{a}</li>
-              ))}
-            </ul>
-          </Card>
-          <Card className="p-4">
-            <h2 className="mb-2 flex items-center gap-1 text-sm font-medium text-muted-foreground">
-              <RiCheckboxCircleLine className="size-4" aria-hidden /> Key points
-            </h2>
-            <ul className="list-disc space-y-1 pl-5 text-sm">
-              {pack.keyPoints.map((p, i) => (
-                <li key={i}>{p}</li>
-              ))}
-            </ul>
-          </Card>
+          </MotionItem>
+          </MotionStagger>
         </TabsContent>
 
         <TabsContent value="flashcards" className="flex flex-col items-center gap-4">
           <p className="text-xs text-muted-foreground">
             Card {cardIndex + 1} of {pack.flashcards.length}
           </p>
+          <AnimatePresence mode="wait">
+          <motion.div
+            key={`${cardIndex}-${flipped ? "back" : "front"}`}
+            initial={{ opacity: 0, rotateY: flipped ? -18 : 18, scale: 0.98 }}
+            animate={{ opacity: 1, rotateY: 0, scale: 1 }}
+            exit={{ opacity: 0, rotateY: flipped ? 18 : -18, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-sm"
+          >
           <Card
             role="button"
             tabIndex={0}
@@ -150,6 +179,8 @@ export default function StudyPackPage() {
               <ReadAloudButton text={flipped ? card.content.back : card.content.front} />
             </div>
           </Card>
+          </motion.div>
+          </AnimatePresence>
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -222,18 +253,25 @@ export default function StudyPackPage() {
         </TabsContent>
 
         <TabsContent value="quiz" className="flex flex-col items-center gap-4 py-8 text-center">
+          <MotionItem>
           <p className="text-sm text-muted-foreground">
             {pack.quiz.length} questions, ready when you are.
           </p>
+          </MotionItem>
+          <MotionPress>
           <Button onClick={() => router.push(`/pack/${id}/quiz`)}>Start quiz</Button>
+          </MotionPress>
           {pack.flashcards.length > 0 && (
+            <MotionPress>
             <Button variant="outline" onClick={() => router.push(`/pack/${id}/quiz/define`)}>
               Definition mode
             </Button>
+            </MotionPress>
           )}
         </TabsContent>
 
         <TabsContent value="plan">
+          <MotionItem>
           <Card className="p-4">
             <ol className="space-y-3 text-sm">
               {pack.plan.map((step, i) => (
@@ -250,8 +288,10 @@ export default function StudyPackPage() {
               ))}
             </ol>
           </Card>
+          </MotionItem>
         </TabsContent>
       </Tabs>
-    </div>
+      </MotionItem>
+    </MotionPage>
   );
 }

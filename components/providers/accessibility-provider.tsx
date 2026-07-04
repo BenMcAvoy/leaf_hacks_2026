@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { MotionConfig } from "framer-motion";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useNeuroStore } from "@/lib/store/neuro-store";
 
@@ -25,5 +26,9 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     root.setAttribute("data-ui-complexity", neuroProfile.uiComplexityLevel);
   }, [profile, neuroProfile]);
 
-  return <>{children}</>;
+  return (
+    <MotionConfig reducedMotion={profile?.accessibility.reduceMotion ? "always" : "user"}>
+      {children}
+    </MotionConfig>
+  );
 }

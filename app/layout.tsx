@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -9,25 +8,36 @@ import { PwaRegister } from "@/components/providers/pwa-register"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'})
-
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
-
 export const metadata: Metadata = {
-  title: "Leaf - Study Smarter",
-  description: "Learn your way with AI study packs, flashcards, and squads.",
+  title: "Study Flow - Learn Your Way",
+  description: "Personalised study packs, quizzes and Study Spheres for every learning style.",
+  icons: {
+    icon: [
+      {
+        url: "/brand/study-flow-logo-light.png",
+        sizes: "963x993",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/brand/study-flow-logo-dark.png",
+        sizes: "1254x1254",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Leaf",
+    title: "Study Flow",
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: "#2b3ed1",
+  themeColor: "#7c3aed",
 }
 
 export default function RootLayout({
@@ -39,7 +49,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
+      className={cn("antialiased", "font-sans")}
     >
       <body>
         <ThemeProvider defaultTheme="light">

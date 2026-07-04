@@ -19,14 +19,15 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { subscribeToCollection, where, orderBy, limit } from "@/lib/firestore";
 import { StudyPackList } from "@/components/study-pack-list";
+import { MotionItem, MotionPage, MotionPress, MotionStagger } from "@/components/motion-primitives";
 import { XP_PER_LEVEL, type StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const QUICK_ACTIONS = [
-  { key: "flashcards", label: "Generate AI Flashcards", icon: RiSdCardLine, topicHint: "Flashcards: " },
-  { key: "homework", label: "Homework Helper", icon: RiQuestionAnswerLine, topicHint: "Homework help: " },
-  { key: "plan", label: "Create Study Plan", icon: RiCalendarScheduleLine, topicHint: "Study plan: " },
-  { key: "understand", label: "Understand a Topic", icon: RiLightbulbFlashLine, topicHint: "" },
+  { key: "flashcards", label: "Make Flashcards", icon: RiSdCardLine, topicHint: "Flashcards: " },
+  { key: "homework", label: "Hint First Help", icon: RiQuestionAnswerLine, topicHint: "Homework help: " },
+  { key: "plan", label: "10 Minute Plan", icon: RiCalendarScheduleLine, topicHint: "Study plan: " },
+  { key: "understand", label: "Reshape a Topic", icon: RiLightbulbFlashLine, topicHint: "" },
 ];
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -78,7 +79,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+    <MotionPage className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+      <MotionItem>
       <Card className="flex flex-col gap-4 border-none bg-gradient-to-br from-primary/90 to-primary p-5 text-primary-foreground">
         <div className="flex items-center justify-between">
           <div>
@@ -100,7 +102,7 @@ export default function DashboardPage() {
         <div className="flex justify-between pt-1" role="list" aria-label="Days of the week">
           {weekDays().map((day, i) => (
             <div
-              key={i}
+              key={`${day.label}-${i}`}
               role="listitem"
               aria-label={day.isToday ? `${day.fullName}, today` : day.fullName}
               aria-current={day.isToday ? "date" : undefined}
@@ -114,13 +116,14 @@ export default function DashboardPage() {
           ))}
         </div>
       </Card>
+      </MotionItem>
 
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3">
+      <MotionItem>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Learn Your Way</h2>
+        <MotionStagger className="grid grid-cols-2 gap-3">
           {QUICK_ACTIONS.map(({ key, label, icon: Icon, topicHint }) => (
+            <MotionPress key={key}>
             <Card
-              key={key}
               role="button"
               tabIndex={0}
               onClick={() => goToUpload(topicHint || undefined)}
@@ -132,11 +135,12 @@ export default function DashboardPage() {
               </div>
               <span className="text-sm font-medium">{label}</span>
             </Card>
+            </MotionPress>
           ))}
-        </div>
-      </div>
+        </MotionStagger>
+      </MotionItem>
 
-      <div>
+      <MotionItem>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium text-muted-foreground">Recent study packs</h2>
           <Link href="/packs" className="text-sm font-medium text-primary">
@@ -148,8 +152,9 @@ export default function DashboardPage() {
           onEmptyAction={() => goToUpload()}
           emptyLabel="Generate your first one"
         />
-      </div>
+      </MotionItem>
 
+      <MotionItem>
       <form onSubmit={handlePromptSubmit} className="flex items-center gap-2">
         <Input
           value={prompt}
@@ -161,6 +166,7 @@ export default function DashboardPage() {
           <RiSendPlaneLine className="size-4" />
         </Button>
       </form>
-    </div>
+      </MotionItem>
+    </MotionPage>
   );
 }
