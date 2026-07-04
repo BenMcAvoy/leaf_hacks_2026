@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { addDocument, timestamp } from "@/lib/firestore";
 import { uploadUserFile } from "@/lib/storage";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
@@ -26,6 +27,7 @@ function UploadContent() {
   const [generating, setGenerating] = useState(false);
   const { user, profile } = useAuth();
   const router = useRouter();
+  const brainiac = useBrainiac();
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -34,7 +36,9 @@ function UploadContent() {
     try {
       setFile(await uploadUserFile(user.uid, selected));
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't upload that file. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't upload that file. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setUploading(false);
     }
@@ -70,7 +74,9 @@ function UploadContent() {
       });
       router.push(`/pack/${packId}`);
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't generate your study pack. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't generate your study pack. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setGenerating(false);
     }

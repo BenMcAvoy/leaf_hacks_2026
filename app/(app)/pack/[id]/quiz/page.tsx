@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useActivePack } from "@/components/providers/active-pack-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { getDocument } from "@/lib/firestore";
 import { quizFeedback } from "@/lib/quiz-feedback";
 import { xpForQuizResult, updateStreak, applyXp } from "@/lib/gamification";
@@ -25,6 +26,7 @@ export default function QuizPage() {
   const [finished, setFinished] = useState(false);
   const [xpGained, setXpGained] = useState(0);
   const { setActivePackId } = useActivePack();
+  const brainiac = useBrainiac();
 
   useEffect(() => {
     getDocument<StudyPack>("studyPacks", id).then(setPack);
@@ -45,7 +47,9 @@ export default function QuizPage() {
     setSelected(choiceIndex);
     const correct = choiceIndex === question.correctIndex;
     if (correct) setCorrectCount((c) => c + 1);
-    toast(quizFeedback(correct, index));
+    const feedback = quizFeedback(correct, index);
+    toast(feedback);
+    brainiac.show(correct ? "happy" : "error", feedback);
   }
 
   async function next() {
