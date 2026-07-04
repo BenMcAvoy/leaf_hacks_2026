@@ -64,7 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     const unsubDoc = subscribeToDocument<UserProfile>("users", user.uid, (data) => {
-      setProfile(data);
+      setProfile(
+        data ? { ...data, accessibility: { ...defaultAccessibilitySettings, ...data.accessibility } } : data,
+      );
       if (data?.sensoryProfile) {
         useNeuroStore.getState().updateProfile(data.sensoryProfile);
       }

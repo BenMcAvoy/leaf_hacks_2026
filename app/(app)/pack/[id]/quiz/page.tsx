@@ -77,7 +77,7 @@ export default function QuizPage() {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">
         <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <RiTrophyLine className="size-8" />
+          <RiTrophyLine className="size-8" aria-hidden />
         </div>
         <h1 className="text-xl font-semibold">Quiz complete!</h1>
         <p className="text-sm text-muted-foreground">
@@ -96,8 +96,12 @@ export default function QuizPage() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 p-4">
       <div>
-        <Progress value={((index + 1) / pack.quiz.length) * 100} className="h-2" />
-        <p className="mt-2 text-xs text-muted-foreground">
+        <Progress
+          value={((index + 1) / pack.quiz.length) * 100}
+          className="h-2"
+          aria-label={`Question ${index + 1} of ${pack.quiz.length}`}
+        />
+        <p className="mt-2 text-xs text-muted-foreground" aria-hidden="true">
           Question {index + 1} of {pack.quiz.length}
         </p>
       </div>
@@ -122,8 +126,18 @@ export default function QuizPage() {
               )}
             >
               {choice}
-              {showState && isCorrect && <RiCheckLine className="size-4 text-green-600" />}
-              {showState && isSelected && !isCorrect && <RiCloseLine className="size-4 text-destructive" />}
+              {showState && isCorrect && (
+                <>
+                  <RiCheckLine className="size-4 text-green-600" aria-hidden />
+                  <span className="sr-only">Correct</span>
+                </>
+              )}
+              {showState && isSelected && !isCorrect && (
+                <>
+                  <RiCloseLine className="size-4 text-destructive" aria-hidden />
+                  <span className="sr-only">Incorrect</span>
+                </>
+              )}
             </button>
           );
         })}

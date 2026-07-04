@@ -18,7 +18,7 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Leaf - Study Smarter",
-  description: "AI-powered study app tailored to your learning style.",
+  description: "Learn your way with AI study packs, flashcards, and squads.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

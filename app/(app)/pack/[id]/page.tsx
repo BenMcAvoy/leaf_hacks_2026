@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { RiLightbulbFlashLine, RiCheckboxCircleLine, RiArrowLeftRightLine } from "@remixicon/react";
+import { RiAddLine, RiLightbulbFlashLine, RiCheckboxCircleLine, RiArrowLeftRightLine } from "@remixicon/react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { getDocument } from "@/lib/firestore";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getDocument, updateDocument } from "@/lib/firestore";
 import { useActivePack } from "@/components/providers/active-pack-provider";
 import { ReadAloudButton } from "@/components/ui/read-aloud-button";
 import type { StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useNeuroStore } from "@/lib/store/neuro-store";
 import { globalMicroPacingEngine } from "@/lib/services/micro-pacing-engine";
+import { FlashcardAdapter } from "@/lib/adapters/flashcard-adapter";
 import { toast } from "sonner";
 
 export default function StudyPackPage() {
@@ -24,6 +27,10 @@ export default function StudyPackPage() {
   const { setActivePackId } = useActivePack();
 
   const neuroProfile = useNeuroStore((state) => state.profile);
+  const [creating, setCreating] = useState(false);
+  const [newFront, setNewFront] = useState("");
+  const [newBack, setNewBack] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     getDocument<StudyPack>("studyPacks", id).then(setPack);
@@ -38,7 +45,7 @@ export default function StudyPackPage() {
     globalMicroPacingEngine.startTracking(() => {
       toast("You've been studying for a while! Consider taking a short micro-break.", { icon: "🧠" });
     }, neuroProfile.cognitiveLoadLimit);
-    
+
     // Listen for rewards
     const unsub = globalMicroPacingEngine.onReward((type, sound, animate) => {
       if (type === "micro_quest_complete") {
@@ -53,6 +60,27 @@ export default function StudyPackPage() {
       unsub();
     };
   }, [neuroProfile.cognitiveLoadLimit]);
+
+  async function saveCard() {
+    if (!pack || !newFront.trim() || !newBack.trim()) return;
+    setSaving(true);
+    try {
+      const newCard = FlashcardAdapter.migrateLegacyFlashcard({ front: newFront.trim(), back: newBack.trim() });
+      const updated = [...pack.flashcards, newCard];
+      await updateDocument<StudyPack>("studyPacks", id, { flashcards: updated });
+      setPack({ ...pack, flashcards: updated });
+      setCardIndex(updated.length - 1);
+      setFlipped(false);
+      setNewFront("");
+      setNewBack("");
+      setCreating(false);
+      toast.success("Flashcard added");
+    } catch {
+      toast.error("Failed to save flashcard");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!pack) {
     return <div className="p-6 text-sm text-muted-foreground">Loading study pack...</div>;
@@ -82,7 +110,7 @@ export default function StudyPackPage() {
           </Card>
           <Card className="p-4">
             <h2 className="mb-2 flex items-center gap-1 text-sm font-medium text-muted-foreground">
-              <RiLightbulbFlashLine className="size-4" /> Key analogies
+              <RiLightbulbFlashLine className="size-4" aria-hidden /> Key analogies
             </h2>
             <ul className="list-disc space-y-1 pl-5 text-sm">
               {pack.analogies.map((a, i) => (
@@ -92,7 +120,7 @@ export default function StudyPackPage() {
           </Card>
           <Card className="p-4">
             <h2 className="mb-2 flex items-center gap-1 text-sm font-medium text-muted-foreground">
-              <RiCheckboxCircleLine className="size-4" /> Key points
+              <RiCheckboxCircleLine className="size-4" aria-hidden /> Key points
             </h2>
             <ul className="list-disc space-y-1 pl-5 text-sm">
               {pack.keyPoints.map((p, i) => (
@@ -107,11 +135,15 @@ export default function StudyPackPage() {
             Card {cardIndex + 1} of {pack.flashcards.length}
           </p>
           <Card
+            role="button"
+            tabIndex={0}
             onClick={() => setFlipped((f) => !f)}
-            className="flex h-56 w-full max-w-sm cursor-pointer items-center justify-center p-6 text-center relative group"
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFlipped((f) => !f); } }}
+            aria-label={`${flipped ? "Back" : "Front"}: ${flipped ? card.content.back : card.content.front}. Press to flip.`}
+            className="flex h-56 w-full max-w-sm cursor-pointer items-center justify-center p-6 text-center relative group focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <p className="text-base font-medium">{flipped ? card.content.back : card.content.front}</p>
-            <div 
+            <p className="text-base font-medium" aria-hidden="true">{flipped ? card.content.back : card.content.front}</p>
+            <div
               className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => e.stopPropagation()}
             >
@@ -131,7 +163,7 @@ export default function StudyPackPage() {
               Previous
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setFlipped((f) => !f)}>
-              <RiArrowLeftRightLine className="size-4" /> Flip
+              <RiArrowLeftRightLine className="size-4" aria-hidden /> Flip
             </Button>
             <Button
               variant="outline"
@@ -149,6 +181,44 @@ export default function StudyPackPage() {
               Next
             </Button>
           </div>
+
+          {creating ? (
+            <Card className="flex w-full max-w-sm flex-col gap-3 p-4">
+              <h2 className="text-sm font-medium">New flashcard</h2>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="card-front">Front</Label>
+                <Input
+                  id="card-front"
+                  value={newFront}
+                  onChange={(e) => setNewFront(e.target.value)}
+                  placeholder="Question or term"
+                  autoFocus
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="card-back">Back</Label>
+                <Input
+                  id="card-back"
+                  value={newBack}
+                  onChange={(e) => setNewBack(e.target.value)}
+                  placeholder="Answer or definition"
+                  onKeyDown={(e) => { if (e.key === "Enter") saveCard(); }}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={saveCard} disabled={!newFront.trim() || !newBack.trim() || saving} className="flex-1">
+                  {saving ? "Saving..." : "Add card"}
+                </Button>
+                <Button variant="outline" onClick={() => { setCreating(false); setNewFront(""); setNewBack(""); }}>
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
+              <RiAddLine className="size-4" aria-hidden /> Create flashcard
+            </Button>
+          )}
         </TabsContent>
 
         <TabsContent value="quiz" className="flex flex-col items-center gap-4 py-8 text-center">

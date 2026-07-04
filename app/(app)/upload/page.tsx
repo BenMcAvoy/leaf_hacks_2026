@@ -106,29 +106,33 @@ function UploadContent() {
       <Tabs value={source} onValueChange={(v) => setSource(v as StudyPack["sourceType"])}>
         <TabsList className="grid grid-cols-4">
           <TabsTrigger value="photo">
-            <RiImageLine className="size-4" />
+            <RiImageLine className="size-4" aria-hidden />
+            <span className="sr-only">Photo</span>
           </TabsTrigger>
           <TabsTrigger value="file">
-            <RiFileTextLine className="size-4" />
+            <RiFileTextLine className="size-4" aria-hidden />
+            <span className="sr-only">File</span>
           </TabsTrigger>
           <TabsTrigger value="notes">
-            <RiStickyNoteLine className="size-4" />
+            <RiStickyNoteLine className="size-4" aria-hidden />
+            <span className="sr-only">Notes</span>
           </TabsTrigger>
           <TabsTrigger value="link">
-            <RiLinkM className="size-4" />
+            <RiLinkM className="size-4" aria-hidden />
+            <span className="sr-only">Link</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="photo">
           <Card className="flex flex-col items-center gap-3 border-dashed p-8 text-center">
-            <RiImageLine className="size-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Take a picture or upload a photo of your notes or textbook</p>
+            <RiImageLine className="size-8 text-muted-foreground" aria-hidden />
+            <p className="text-sm font-medium" id="photo-desc">Take a picture or upload a photo of your notes or textbook</p>
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={uploading}>
                 <RiCameraLine className="size-4" />
                 Take a photo
               </Button>
-              <Input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} className="w-auto" />
+              <Input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} className="w-auto" aria-label="Choose a photo to upload" aria-describedby="photo-desc" />
             </div>
             <input
               ref={cameraInputRef}
@@ -139,17 +143,17 @@ function UploadContent() {
               disabled={uploading}
               className="hidden"
             />
-            {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
-            {file && !uploading && <p className="text-xs text-muted-foreground">Photo uploaded.</p>}
+            {uploading && <p className="text-xs text-muted-foreground" aria-live="polite">Uploading...</p>}
+            {file && !uploading && <p className="text-xs text-muted-foreground" aria-live="polite">Photo uploaded.</p>}
           </Card>
         </TabsContent>
         <TabsContent value="file">
           <Card className="flex flex-col items-center gap-3 border-dashed p-8 text-center">
-            <RiFileTextLine className="size-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Upload a PDF, Word doc, or text file</p>
-            <Input type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} disabled={uploading} />
-            {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
-            {file && !uploading && <p className="text-xs text-muted-foreground">File uploaded.</p>}
+            <RiFileTextLine className="size-8 text-muted-foreground" aria-hidden />
+            <p className="text-sm font-medium" id="file-desc">Upload a PDF, Word doc, or text file</p>
+            <Input type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} disabled={uploading} aria-label="Choose a file to upload" aria-describedby="file-desc" />
+            {uploading && <p className="text-xs text-muted-foreground" aria-live="polite">Uploading...</p>}
+            {file && !uploading && <p className="text-xs text-muted-foreground" aria-live="polite">File uploaded.</p>}
           </Card>
         </TabsContent>
         <TabsContent value="notes">
@@ -191,8 +195,8 @@ function UploadContent() {
         />
       </div>
 
-      <Button onClick={handleGenerate} disabled={!canGenerate} size="lg">
-        <RiSparkling2Line className="size-4" />
+      <Button onClick={handleGenerate} disabled={!canGenerate} size="lg" aria-busy={generating}>
+        <RiSparkling2Line className="size-4" aria-hidden />
         {generating ? "Generating..." : "Generate Study Pack"}
       </Button>
     </div>

@@ -11,10 +11,10 @@ import {
   RiTeamFill,
   RiUserLine,
   RiUserFill,
-  RiLeafLine,
   RiFireFill,
   RiLogoutBoxRLine,
 } from "@remixicon/react";
+import { LeafLogo } from "@/components/leaf-logo";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
   HomeActionProvider,
@@ -29,7 +29,7 @@ const HOME_PATH = "/dashboard";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: RiHome5Line, activeIcon: RiHome5Fill },
   { href: "/upload", label: "Add", icon: RiUploadCloud2Line, activeIcon: RiUploadCloud2Fill },
-  { href: "/squads", label: "Squads", icon: RiTeamLine, activeIcon: RiTeamFill },
+  { href: "/squads", label: "People", icon: RiTeamLine, activeIcon: RiTeamFill },
   { href: "/profile", label: "Profile", icon: RiUserLine, activeIcon: RiUserFill },
 ];
 
@@ -54,7 +54,7 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
               logoPulse && "home-logo-pulse",
             )}
           >
-            <RiLeafLine className="size-4" />
+            <LeafLogo className="size-4" />
           </div>
           <span className={cn("transition-opacity duration-200", logoPulse && "home-text-pulse")}>
             Leaf
@@ -62,9 +62,12 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
         </button>
         <div className="flex items-center gap-4">
           {profile && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <RiFireFill className="size-4 text-orange-500" />
-              {profile.streakCount}
+            <div
+              className="flex items-center gap-1 text-sm text-muted-foreground"
+              aria-label={`${profile.streakCount} day streak`}
+            >
+              <RiFireFill className="size-4 text-orange-500" aria-hidden />
+              <span aria-hidden="true">{profile.streakCount}</span>
             </div>
           )}
           <ThemeToggle />
@@ -85,7 +88,7 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
         <HomeContent>{children}</HomeContent>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t bg-background/95 py-2 backdrop-blur">
+      <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t bg-background/95 py-2 backdrop-blur">
         {NAV_ITEMS.map((item) => {
           const active = pathname?.startsWith(item.href);
           const Icon = active ? item.activeIcon : item.icon;
