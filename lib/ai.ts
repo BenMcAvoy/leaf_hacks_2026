@@ -60,19 +60,21 @@ function isRetryableError(err: unknown): boolean {
   );
 }
 
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
-  let lastErr: unknown;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+async function withRetry<T>(fn: () => Promise<T>, maxDurationMs = 10000): Promise<T> {
+  const start = Date.now();
+  let attempt = 0;
+  while (true) {
+    attempt++;
     try {
       return await fn();
     } catch (err) {
-      lastErr = err;
-      if (attempt === maxAttempts || !isRetryableError(err)) throw err;
-      const delayMs = 500 * 2 ** (attempt - 1);
+      if (!isRetryableError(err)) throw err;
+      const elapsed = Date.now() - start;
+      if (elapsed >= maxDurationMs) throw err;
+      const delayMs = Math.min(500 * 2 ** (attempt - 1), maxDurationMs - elapsed);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
-  throw lastErr;
 }
 
 function styleInstruction(style: LearningStyle | null): string {
@@ -134,11 +136,13 @@ export async function generateStudyPack(input: {
   ];
   if (input.media) promptParts.push({ media: input.media });
 
-  const { output } = await ai.generate({
-    model: flashModel,
-    prompt: promptParts,
-    output: { schema: studyPackSchema },
-  });
+  const { output } = await withRetry(() =>
+    ai.generate({
+      model: flashModel,
+      prompt: promptParts,
+      output: { schema: studyPackSchema },
+    }),
+  );
 
   if (!output) throw new Error("Gemini returned no output for study pack generation");
 
