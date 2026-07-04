@@ -24,7 +24,7 @@ export function BrainiacMascot() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-20 left-4 z-50 flex items-end gap-2 sm:bottom-6"
+      className="pointer-events-none fixed bottom-24 left-4 z-50 flex items-end gap-2"
       aria-live="polite"
     >
       {message && (
@@ -38,29 +38,22 @@ export function BrainiacMascot() {
         viewBox="0 0 64 64"
         className={cn("brainiac-pop-in size-14 drop-shadow-lg", MOOD_STYLES[mood])}
       >
-        <ellipse cx="32" cy="34" rx="26" ry="22" className="fill-primary" />
-        <path
-          d="M14 26c2-8 10-14 18-14s16 6 18 14"
-          fill="none"
-          className="stroke-primary-foreground/40"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        <circle cx="32" cy="32" r="26" className="fill-primary" />
         <circle
           cx="24"
-          cy="32"
+          cy="30"
           r="4"
           className={cn("fill-primary-foreground", mood !== "error" && "brainiac-blink")}
         />
         <circle
           cx="40"
-          cy="32"
+          cy="30"
           r="4"
           className={cn("fill-primary-foreground", mood !== "error" && "brainiac-blink")}
         />
         {mood === "error" ? (
           <path
-            d="M26 46c2-3 10-3 12 0"
+            d="M26 45c2-3 10-3 12 0"
             fill="none"
             className="stroke-primary-foreground"
             strokeWidth="2.5"
@@ -68,7 +61,7 @@ export function BrainiacMascot() {
           />
         ) : (
           <path
-            d="M26 42c2 3 10 3 12 0"
+            d="M26 41c2 3 10 3 12 0"
             fill="none"
             className="stroke-primary-foreground"
             strokeWidth="2.5"

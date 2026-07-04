@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import {
   addDocument,
   orderBy,
@@ -24,6 +25,7 @@ export default function SquadsPage() {
   const [squads, setSquads] = useState<(Squad & { id: string })[]>([]);
   const [leaders, setLeaders] = useState<(UserProfile & { id: string })[]>([]);
   const [newSquadName, setNewSquadName] = useState("");
+  const brainiac = useBrainiac();
 
   useEffect(() => {
     return subscribeToCollection<Squad>("squads", setSquads, orderBy("totalXp", "desc"), limit(20));
@@ -47,7 +49,9 @@ export default function SquadsPage() {
       await updateProfile({ squadId: id });
       setNewSquadName("");
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't create your squad. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't create your squad. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     }
   }
 
@@ -60,7 +64,9 @@ export default function SquadsPage() {
       });
       await updateProfile({ squadId: squad.id });
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't join that squad. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't join that squad. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     }
   }
 

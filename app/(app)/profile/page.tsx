@@ -12,6 +12,7 @@ import { AccessibilityControls } from "@/components/accessibility-controls";
 import { AppearanceControls } from "@/components/appearance-controls";
 import { LearningStyleSelector } from "@/components/learning-style-selector";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBrainiac } from "@/components/providers/brainiac-provider";
 import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import type { UserProfile } from "@/lib/types";
 import { toast } from "sonner";
@@ -52,6 +53,7 @@ function ProfileForm({
   const [form, setForm] = useState<UserProfile>(profile);
   const [skillInput, setSkillInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const brainiac = useBrainiac();
 
   async function save() {
     if (!form) return;
@@ -60,7 +62,9 @@ function ProfileForm({
       await updateProfile(form);
       toast.success("Profile saved");
     } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again."));
+      const message = getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again.");
+      toast.error(message);
+      brainiac.show("error", message);
     } finally {
       setSaving(false);
     }
