@@ -5,6 +5,7 @@ import { RiSparkling2Line, RiCloseLine, RiSendPlaneLine } from "@remixicon/react
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -37,7 +38,7 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
       if (!res.ok) throw new Error(data.error ?? "Failed to get a reply");
       setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to get a reply");
+      toast.error(getFriendlyErrorMessage(err, "The study assistant couldn't respond. Please try again."));
     } finally {
       setSending(false);
     }

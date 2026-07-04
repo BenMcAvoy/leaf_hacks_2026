@@ -15,7 +15,9 @@ import {
   subscribeToCollection,
   updateDocument,
 } from "@/lib/firestore";
+import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import type { Squad, UserProfile } from "@/lib/types";
+import { toast } from "sonner";
 
 export default function SquadsPage() {
   const { user, profile, updateProfile } = useAuth();
@@ -35,23 +37,31 @@ export default function SquadsPage() {
 
   async function createSquad() {
     if (!user || !newSquadName.trim()) return;
-    const id = await addDocument<Squad>("squads", {
-      name: newSquadName.trim(),
-      memberIds: [user.uid],
-      totalXp: 0,
-      weeklyChallenge: "Complete 3 quizzes as a squad this week",
-    });
-    await updateProfile({ squadId: id });
-    setNewSquadName("");
+    try {
+      const id = await addDocument<Squad>("squads", {
+        name: newSquadName.trim(),
+        memberIds: [user.uid],
+        totalXp: 0,
+        weeklyChallenge: "Complete 3 quizzes as a squad this week",
+      });
+      await updateProfile({ squadId: id });
+      setNewSquadName("");
+    } catch (err) {
+      toast.error(getFriendlyErrorMessage(err, "We couldn't create your squad. Please try again."));
+    }
   }
 
   async function joinSquad(squad: Squad & { id: string }) {
     if (!user) return;
     if (squad.memberIds.includes(user.uid)) return;
-    await updateDocument<Squad>("squads", squad.id, {
-      memberIds: [...squad.memberIds, user.uid],
-    });
-    await updateProfile({ squadId: squad.id });
+    try {
+      await updateDocument<Squad>("squads", squad.id, {
+        memberIds: [...squad.memberIds, user.uid],
+      });
+      await updateProfile({ squadId: squad.id });
+    } catch (err) {
+      toast.error(getFriendlyErrorMessage(err, "We couldn't join that squad. Please try again."));
+    }
   }
 
   return (

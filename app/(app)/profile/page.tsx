@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
+import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import { LEARNING_STYLE_META, type LearningStyle, type UserProfile } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -57,6 +58,8 @@ function ProfileForm({
     try {
       await updateProfile(form);
       toast.success("Profile saved");
+    } catch (err) {
+      toast.error(getFriendlyErrorMessage(err, "We couldn't save your profile. Please try again."));
     } finally {
       setSaving(false);
     }

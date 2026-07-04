@@ -14,8 +14,9 @@ export async function POST(req: Request) {
     const reply = await chatReply({ message: body.message, topic: body.topic });
     return NextResponse.json({ reply });
   } catch (err) {
+    console.error("Failed to get chat reply:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to get a reply" },
+      { error: "The study assistant couldn't respond. Please try again." },
       { status: 500 },
     );
   }

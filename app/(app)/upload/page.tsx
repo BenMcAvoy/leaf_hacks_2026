@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth-provider";
 import { addDocument, timestamp } from "@/lib/firestore";
 import { uploadUserFile } from "@/lib/storage";
+import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import type { StudyPack } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -33,7 +34,7 @@ function UploadContent() {
     try {
       setFile(await uploadUserFile(user.uid, selected));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to upload file");
+      toast.error(getFriendlyErrorMessage(err, "We couldn't upload that file. Please try again."));
     } finally {
       setUploading(false);
     }
@@ -69,7 +70,7 @@ function UploadContent() {
       });
       router.push(`/pack/${packId}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate study pack");
+      toast.error(getFriendlyErrorMessage(err, "We couldn't generate your study pack. Please try again."));
     } finally {
       setGenerating(false);
     }

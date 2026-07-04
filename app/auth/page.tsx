@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuth } from "@/components/providers/auth-provider";
+import { getFriendlyErrorMessage } from "@/lib/firebase-errors";
 import { toast } from "sonner";
 
 type Mode = "login" | "register";
@@ -39,7 +40,7 @@ export default function AuthPage() {
       }
       router.replace("/");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+      toast.error(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
