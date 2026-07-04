@@ -5,7 +5,7 @@ import { RiSparkling2Line, RiCloseLine, RiSendPlaneLine } from "@remixicon/react
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { chatReply } from "@/lib/mock-ai";
+import { toast } from "sonner";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -15,17 +15,32 @@ interface ChatMessage {
 export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: "Hi! Ask me about anything you're studying." },
   ]);
 
-  function send(e: React.FormEvent) {
+  async function send(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed) return;
-    const reply = chatReply(trimmed, activeTopic);
-    setMessages((m) => [...m, { role: "user", text: trimmed }, { role: "assistant", text: reply }]);
+    if (!trimmed || sending) return;
+    setMessages((m) => [...m, { role: "user", text: trimmed }]);
     setInput("");
+    setSending(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed, topic: activeTopic }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to get a reply");
+      setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to get a reply");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -54,6 +69,11 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
                 {m.text}
               </div>
             ))}
+            {sending && (
+              <div className="mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-muted-foreground">
+                Thinking...
+              </div>
+            )}
           </div>
           <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
             <Input
@@ -61,8 +81,9 @@ export function ChatBubble({ activeTopic }: { activeTopic?: string }) {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask anything..."
               aria-label="Message the study assistant"
+              disabled={sending}
             />
-            <Button type="submit" size="icon" aria-label="Send">
+            <Button type="submit" size="icon" aria-label="Send" disabled={sending}>
               <RiSendPlaneLine className="size-4" />
             </Button>
           </form>

@@ -10,31 +10,66 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth-provider";
-import { addDocument } from "@/lib/firestore";
-import { generateStudyPack } from "@/lib/mock-ai";
-import { timestamp } from "@/lib/firestore";
+import { addDocument, timestamp } from "@/lib/firestore";
+import { uploadUserFile } from "@/lib/storage";
 import type { StudyPack } from "@/lib/types";
+import { toast } from "sonner";
 
 function UploadContent() {
   const [source, setSource] = useState<StudyPack["sourceType"]>("notes");
   const searchParams = useSearchParams();
   const [topic, setTopic] = useState(searchParams.get("topic") ?? "");
   const [content, setContent] = useState("");
+  const [file, setFile] = useState<{ url: string; contentType: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const { user, profile } = useAuth();
   const router = useRouter();
 
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0];
+    if (!selected || !user) return;
+    setUploading(true);
+    try {
+      setFile(await uploadUserFile(user.uid, selected));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload file");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const needsFile = source === "photo" || source === "file";
+  const canGenerate = !!topic.trim() && !generating && !uploading && (!needsFile || !!file);
+
   async function handleGenerate() {
-    if (!user || !topic.trim()) return;
+    if (!user || !canGenerate) return;
     setGenerating(true);
     try {
-      const generated = generateStudyPack(topic.trim(), source, profile?.learningStyle ?? null);
+      const res = await fetch("/api/study-pack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic.trim(),
+          sourceType: source,
+          learningStyle: profile?.learningStyle ?? null,
+          notes: source === "notes" ? content : undefined,
+          link: source === "link" ? content : undefined,
+          fileUrl: needsFile ? file?.url : undefined,
+          fileMimeType: needsFile ? file?.contentType : undefined,
+        }),
+      });
+      const generated = await res.json();
+      if (!res.ok) throw new Error(generated.error ?? "Failed to generate study pack");
+
       const packId = await addDocument<StudyPack>("studyPacks", {
         ownerId: user.uid,
         createdAt: timestamp(),
         ...generated,
       });
       router.push(`/pack/${packId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate study pack");
     } finally {
       setGenerating(false);
     }
@@ -69,14 +104,18 @@ function UploadContent() {
           <Card className="flex flex-col items-center gap-3 border-dashed p-8 text-center">
             <RiImageLine className="size-8 text-muted-foreground" />
             <p className="text-sm font-medium">Upload a photo of your notes or textbook</p>
-            <Input type="file" accept="image/*" />
+            <Input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} />
+            {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
+            {file && !uploading && <p className="text-xs text-muted-foreground">Photo uploaded.</p>}
           </Card>
         </TabsContent>
         <TabsContent value="file">
           <Card className="flex flex-col items-center gap-3 border-dashed p-8 text-center">
             <RiFileTextLine className="size-8 text-muted-foreground" />
             <p className="text-sm font-medium">Upload a PDF, Word doc, or text file</p>
-            <Input type="file" accept=".pdf,.doc,.docx,.txt" />
+            <Input type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} disabled={uploading} />
+            {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
+            {file && !uploading && <p className="text-xs text-muted-foreground">File uploaded.</p>}
           </Card>
         </TabsContent>
         <TabsContent value="notes">
@@ -118,7 +157,7 @@ function UploadContent() {
         />
       </div>
 
-      <Button onClick={handleGenerate} disabled={!topic.trim() || generating} size="lg">
+      <Button onClick={handleGenerate} disabled={!canGenerate} size="lg">
         <RiSparkling2Line className="size-4" />
         {generating ? "Generating..." : "Generate Study Pack"}
       </Button>

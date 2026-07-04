@@ -7,6 +7,7 @@
 - Tailwind CSS v4
 - Firebase 12 (Firestore, Analytics, Storage)
 - shadcn/ui + Base UI
+- Genkit + @genkit-ai/googleai (added, not yet wired up)
 
 ## Directory Structure
 ```

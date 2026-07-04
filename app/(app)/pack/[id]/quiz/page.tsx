@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getDocument } from "@/lib/firestore";
-import { quizFeedback } from "@/lib/mock-ai";
+import { quizFeedback } from "@/lib/quiz-feedback";
 import { xpForQuizResult, updateStreak, applyXp } from "@/lib/gamification";
 import type { StudyPack } from "@/lib/types";
 import { cn } from "@/lib/utils";
