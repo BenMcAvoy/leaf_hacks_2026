@@ -19,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AccessibilityControls } from "@/components/accessibility-controls";
+import { AppearanceControls } from "@/components/appearance-controls";
 import { LearningStyleSelector } from "@/components/learning-style-selector";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
@@ -310,6 +311,7 @@ function ProfileForm({
           onChange={(learningStyle) => setForm({ ...form, learningStyle })}
         />
 
+<<<<<<< HEAD
         <h2 className="mt-4 text-sm font-medium">Sensory & Cognitive Profile</h2>
         <div className="flex flex-col gap-2">
           <Label>Reading Level</Label>
@@ -368,7 +370,10 @@ function ProfileForm({
             }
           />
         </div>
-        
+
+        <h2 className="mt-4 text-sm font-medium">Appearance</h2>
+        <AppearanceControls />
+
         <h2 className="mt-4 text-sm font-medium">Accessibility</h2>
         <AccessibilityControls
           value={form.accessibility}

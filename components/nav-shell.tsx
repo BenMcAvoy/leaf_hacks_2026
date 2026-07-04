@@ -21,6 +21,7 @@ import {
   useHomeAction,
 } from "@/components/providers/home-action-provider";
 import { HomeContent } from "@/components/home-content";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const HOME_PATH = "/dashboard";
@@ -66,6 +67,7 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
               {profile.streakCount}
             </div>
           )}
+          <ThemeToggle />
           <button
             onClick={async () => {
               await logout();
