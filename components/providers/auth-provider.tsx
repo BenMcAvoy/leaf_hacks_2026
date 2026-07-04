@@ -18,6 +18,31 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const demoProfile: UserProfile = {
+  uid: "demo-alex",
+  email: "alex@studyflow.demo",
+  displayName: "Alex",
+  onboardingComplete: true,
+  learningStyle: "picturePath",
+  accessibility: defaultAccessibilitySettings,
+  xp: 1620,
+  level: 4,
+  streakCount: 7,
+  streakFreezeAvailable: true,
+  lastActiveDate: null,
+  squadId: "sphere-physics-bros",
+  badges: ["First Steps", "Consistent", "Study Sphere Starter"],
+  basicInfo: {
+    headline: "A-Level Physics student",
+    bio: "Learning Newton's laws with short visual explanations and practice questions.",
+    location: "London",
+  },
+  experience: [{ title: "Study Sphere member", org: "Physics Bros", period: "This week" }],
+  qualifications: [{ name: "GCSE Science", issuer: "Mock profile", year: "2025" }],
+  languages: [{ name: "English", level: "Fluent" }],
+  skills: ["Physics", "Flashcards", "Exam practice"],
+};
+
 function newProfile(uid: string, email: string): UserProfile {
   return {
     uid,
@@ -50,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubAuth = onAuthStateChanged((firebaseUser) => {
       setUser(firebaseUser);
       if (!firebaseUser) {
-        setProfile(null);
+        setProfile(demoProfile);
         setLoading(false);
       }
     });
@@ -81,11 +106,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await signOut();
+    if (user) {
+      await signOut();
+    }
+    setUser(null);
+    setProfile(demoProfile);
   }
 
   async function updateProfile(data: Partial<UserProfile>) {
-    if (!user) return;
+    if (!user) {
+      setProfile((current) => (current ? { ...current, ...data } : current));
+      return;
+    }
     await updateDocument<UserProfile>("users", user.uid, data);
   }
 

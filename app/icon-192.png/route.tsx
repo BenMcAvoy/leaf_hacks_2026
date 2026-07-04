@@ -1,9 +1,16 @@
-import { ImageResponse } from "next/og";
-import { LeafMark } from "@/lib/app-icon";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const size = { width: 192, height: 192 };
 export const contentType = "image/png";
 
-export function GET() {
-  return new ImageResponse(<LeafMark size={192} />, size);
+export async function GET() {
+  const file = await readFile(join(process.cwd(), "public", "brand", "study-flow-logo-dark.png"));
+
+  return new Response(new Uint8Array(file), {
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   RiHome5Line,
   RiHome5Fill,
@@ -11,7 +12,6 @@ import {
   RiTeamFill,
   RiUserLine,
   RiUserFill,
-  RiLeafLine,
   RiFireFill,
   RiLogoutBoxRLine,
 } from "@remixicon/react";
@@ -21,14 +21,15 @@ import {
   useHomeAction,
 } from "@/components/providers/home-action-provider";
 import { HomeContent } from "@/components/home-content";
+import { StudyFlowLogo } from "@/components/study-flow-logo";
 import { cn } from "@/lib/utils";
 
 const HOME_PATH = "/dashboard";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: RiHome5Line, activeIcon: RiHome5Fill },
-  { href: "/upload", label: "Add", icon: RiUploadCloud2Line, activeIcon: RiUploadCloud2Fill },
-  { href: "/squads", label: "Squads", icon: RiTeamLine, activeIcon: RiTeamFill },
+  { href: "/upload", label: "Learn", icon: RiUploadCloud2Line, activeIcon: RiUploadCloud2Fill },
+  { href: "/squads", label: "Spheres", icon: RiTeamLine, activeIcon: RiTeamFill },
   { href: "/profile", label: "Profile", icon: RiUserLine, activeIcon: RiUserFill },
 ];
 
@@ -47,17 +48,25 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
           aria-label="Go to home"
           className="group flex items-center gap-2 rounded-lg font-semibold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <div
-            className={cn(
-              "flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
-              logoPulse && "home-logo-pulse",
-            )}
+          <motion.div
+            animate={
+              logoPulse
+                ? { scale: [1, 0.88, 1.06, 1], rotate: [0, -10, 4, 0] }
+                : { scale: 1, rotate: 0 }
+            }
+            transition={{ duration: 0.42, ease: [0.34, 1.4, 0.64, 1] }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex"
           >
-            <RiLeafLine className="size-4" />
-          </div>
-          <span className={cn("transition-opacity duration-200", logoPulse && "home-text-pulse")}>
-            Leaf
-          </span>
+            <StudyFlowLogo markClassName="size-8 rounded-lg" />
+          </motion.div>
+          <motion.span
+            animate={logoPulse ? { opacity: [1, 0.7, 1], x: [0, -2, 0] } : { opacity: 1, x: 0 }}
+            transition={{ duration: 0.42, ease: [0.34, 1.4, 0.64, 1] }}
+          >
+            Study Flow
+          </motion.span>
         </button>
         <div className="flex items-center gap-4">
           {profile && (
@@ -69,9 +78,9 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
           <button
             onClick={async () => {
               await logout();
-              router.replace("/auth");
+              router.replace("/dashboard");
             }}
-            aria-label="Log out"
+            aria-label="Reset demo"
             className="text-muted-foreground hover:text-foreground"
           >
             <RiLogoutBoxRLine className="size-5" />
@@ -91,18 +100,21 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
 
           if (isHome) {
             return (
-              <button
+              <motion.button
                 key={item.href}
                 type="button"
                 onClick={goHome}
+                whileTap={{ scale: 0.94 }}
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-lg px-4 py-1 text-xs transition-colors",
                   active ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                <Icon className="size-5" />
+                <motion.span animate={active ? { y: -1, scale: 1.08 } : { y: 0, scale: 1 }}>
+                  <Icon className="size-5" />
+                </motion.span>
                 {item.label}
-              </button>
+              </motion.button>
             );
           }
 
@@ -115,7 +127,13 @@ function NavShellInner({ children }: { children: React.ReactNode }) {
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >
-              <Icon className="size-5" />
+              <motion.span
+                animate={active ? { y: -1, scale: 1.08 } : { y: 0, scale: 1 }}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.94 }}
+              >
+                <Icon className="size-5" />
+              </motion.span>
               {item.label}
             </Link>
           );
